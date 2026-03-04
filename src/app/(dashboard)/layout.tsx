@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { getBrands } from "@/actions/brand";
 import AppLayout from "@/components/layout/AppLayout";
 import type { SessionUser } from "@/types";
 
@@ -14,5 +15,17 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  return <AppLayout user={session.user as SessionUser}>{children}</AppLayout>;
+  const user = session.user as SessionUser;
+  const brands = await getBrands();
+  const brandNav = brands.map((b) => ({
+    id: b.id,
+    name: b.name,
+    color: b.color,
+  }));
+
+  return (
+    <AppLayout user={user} brands={brandNav}>
+      {children}
+    </AppLayout>
+  );
 }

@@ -5,17 +5,23 @@ import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import type { SessionUser } from "@/types";
 
+interface BrandNav {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
 interface AppLayoutProps {
   user: SessionUser;
+  brands: BrandNav[];
   children: React.ReactNode;
 }
 
-export default function AppLayout({ user, children }: AppLayoutProps) {
+export default function AppLayout({ user, brands, children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-40 lg:hidden"
@@ -25,6 +31,7 @@ export default function AppLayout({ user, children }: AppLayoutProps) {
 
       <Sidebar
         user={user}
+        brands={brands}
         mobileOpen={sidebarOpen}
         onMobileClose={() => setSidebarOpen(false)}
       />

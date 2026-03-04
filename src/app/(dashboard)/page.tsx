@@ -1,122 +1,88 @@
 import { auth } from "@/lib/auth";
+import { getBrands } from "@/actions/brand";
+import { redirect } from "next/navigation";
 import type { SessionUser } from "@/types";
-import {
-  getDashboardStats,
-  getCardsByPriority,
-  getCardsByColumn,
-  getActivityTrend,
-  getTopMembers,
-  getBoardStats,
-} from "@/actions/stats";
-import {
-  FolderKanban,
-  Kanban,
-  Users,
-  ListChecks,
-  AlertTriangle,
-  Clock,
-  Archive,
-} from "lucide-react";
 import Link from "next/link";
-import DashboardClient from "@/components/dashboard/DashboardClient";
+import { FolderKanban, Plus } from "lucide-react";
 
-export default async function DashboardPage() {
+export default async function HomePage() {
   const session = await auth();
   const user = session!.user as SessionUser;
+  const brands = await getBrands();
 
-  const [stats, priorityData, columnData, activityData, topMembers, boardStats] =
-    await Promise.all([
-      getDashboardStats(),
-      getCardsByPriority(),
-      getCardsByColumn(),
-      getActivityTrend(),
-      getTopMembers(),
-      getBoardStats(),
-    ]);
+  if (brands.length === 1) {
+    redirect(`/brand/${brands[0].id}`);
+  }
+
+  const isSuperAdmin = user.role === "SUPER_ADMIN";
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Welcome back, {user.displayName}</p>
+        <h1 className="text-2xl font-bold text-gray-900">Select a Brand</h1>
+        <p className="text-gray-500 mt-1">Choose a brand to view its dashboard</p>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
-        <StatCard icon={<FolderKanban size={20} />} label="Brands" value={stats.brandCount} />
-        <StatCard icon={<Kanban size={20} />} label="Boards" value={stats.boardCount} />
-        <StatCard icon={<ListChecks size={20} />} label="Active Cards" value={stats.totalCards} />
-        <StatCard icon={<Archive size={20} />} label="Archived" value={stats.archivedCards} />
-        <StatCard icon={<AlertTriangle size={20} />} label="High Priority" value={stats.highPriorityCards} color="text-amber-500" />
-        <StatCard icon={<Clock size={20} />} label="Overdue" value={stats.overdueTasks} color="text-red-500" />
-        {stats.isSuperAdmin && (
-          <StatCard icon={<Users size={20} />} label="Users" value={stats.userCount} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {brands.map((brand) => (
+          <Link
+            key={brand.id}
+            href={`/brand/${brand.id}`}
+            className="group bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all overflow-hidden"
+          >
+            <div
+              className="h-2 w-full"
+              style={{ backgroundColor: brand.color || "#111827" }}
+            />
+            <div className="p-5">
+              <div className="flex items-start gap-3 mb-3">
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: brand.color || "#111827" }}
+                >
+                  <FolderKanban size={20} className="text-white" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-gray-900 truncate group-hover:text-black">
+                    {brand.name}
+                  </h3>
+                  {brand.description && (
+                    <p className="text-sm text-gray-500 line-clamp-2 mt-0.5">
+                      {brand.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>{brand._count.boards} boards</span>
+                <span>{brand.members.length} members</span>
+              </div>
+            </div>
+          </Link>
+        ))}
+
+        {isSuperAdmin && (
+          <Link
+            href="/admin/roles"
+            className="flex flex-col items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed border-gray-200 hover:border-gray-400 hover:bg-gray-50 text-gray-400 hover:text-gray-600 transition-all min-h-[160px]"
+          >
+            <Plus size={24} />
+            <span className="text-sm font-medium">Manage Brands & Roles</span>
+          </Link>
         )}
       </div>
 
-      {/* Charts */}
-      <DashboardClient
-        priorityData={priorityData}
-        columnData={columnData}
-        activityData={activityData}
-        topMembers={topMembers}
-        boardStats={boardStats}
-      />
-
-      {/* Quick Actions */}
-      <div className="mt-6 bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h2>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/brands"
-            className="px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm text-gray-700 transition-colors"
-          >
-            View Brands
-          </Link>
-          <Link
-            href="/boards"
-            className="px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm text-gray-700 transition-colors"
-          >
-            View Boards
-          </Link>
-          <Link
-            href="/reports"
-            className="px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm text-gray-700 transition-colors"
-          >
-            Reports & Analytics
-          </Link>
-          {stats.isSuperAdmin && (
-            <Link
-              href="/admin/users"
-              className="px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm text-gray-700 transition-colors"
-            >
-              Manage Users
-            </Link>
-          )}
+      {brands.length === 0 && (
+        <div className="text-center py-16">
+          <FolderKanban size={48} className="mx-auto text-gray-300 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No brands available</h3>
+          <p className="text-gray-500 text-sm">
+            {isSuperAdmin
+              ? "Create your first brand to get started."
+              : "You haven't been added to any brands yet."}
+          </p>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  color?: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className={color || "text-gray-400"}>{icon}</div>
-      </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+      )}
     </div>
   );
 }

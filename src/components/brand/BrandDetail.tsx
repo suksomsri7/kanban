@@ -81,7 +81,7 @@ export default function BrandDetail({
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-3">
           <Link
-            href="/brands"
+            href={`/brand/${brand.id}`}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <ArrowLeft size={20} />
