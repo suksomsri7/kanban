@@ -10,7 +10,7 @@ export async function middleware(req: NextRequest) {
   const isPublicRoute = publicRoutes.some((route) =>
     pathname.startsWith(route)
   );
-  const isAuthRoute = pathname.startsWith("/api/auth") || pathname.startsWith("/api/debug-auth");
+  const isAuthRoute = pathname.startsWith("/api/auth");
   const isStaticAsset =
     pathname.startsWith("/_next") || pathname.startsWith("/favicon");
 
