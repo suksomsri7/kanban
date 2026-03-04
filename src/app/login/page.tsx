@@ -30,19 +30,13 @@ function LoginForm() {
       });
 
       if (result?.error) {
-        setError(`Auth error: ${result.error} | status: ${result.status}`);
-      } else if (result?.ok) {
-        // #region agent log
-        const sessionRes = await fetch("/api/auth/session");
-        const sessionData = await sessionRes.json();
-        const cookies = document.cookie;
-        setError(`DEBUG OK | cookies: [${cookies}] | session: ${JSON.stringify(sessionData)}`);
-        // #endregion
+        setError("Invalid username or password");
       } else {
-        setError(`Unexpected: ${JSON.stringify(result)}`);
+        router.push(callbackUrl);
+        router.refresh();
       }
-    } catch (err: unknown) {
-      setError(`Exception: ${err instanceof Error ? err.message : String(err)}`);
+    } catch {
+      setError("An unexpected error occurred");
     } finally {
       setLoading(false);
     }
