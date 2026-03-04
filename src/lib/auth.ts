@@ -5,6 +5,7 @@ import { verifyPassword } from "@/lib/password";
 import type { SessionUser } from "@/types";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
