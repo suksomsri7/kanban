@@ -20,7 +20,7 @@ export async function GET() {
     where: { isArchived: false },
     select: {
       title: true,
-      project: { select: { name: true } },
+      brand: { select: { name: true } },
       _count: { select: { members: true } },
       columns: {
         select: {
@@ -39,7 +39,7 @@ export async function GET() {
       .reduce((s, c) => s + c._count.cards, 0);
     return {
       title: b.title,
-      project: b.project?.name || "—",
+      brand: b.brand?.name || "—",
       members: b._count.members,
       totalCards,
       doneCards,
@@ -69,15 +69,15 @@ export async function GET() {
     assignees: c.assignees.map((a) => a.user.displayName).join(", ") || "—",
   }));
 
-  const [totalCards, totalProjects, totalUsers] = await Promise.all([
+  const [totalCards, totalBrands, totalUsers] = await Promise.all([
     prisma.card.count({ where: { isArchived: false } }),
-    prisma.project.count({ where: { isArchived: false } }),
+    prisma.brand.count({ where: { isArchived: false } }),
     prisma.user.count({ where: { isActive: true } }),
   ]);
 
   const stats = {
     totalCards,
-    totalProjects,
+    totalBrands,
     totalBoards: boards.length,
     totalUsers,
     overdueCount: overdueCards.length,

@@ -42,8 +42,8 @@ export async function POST(req: NextRequest) {
     await prisma.label.deleteMany();
     await prisma.boardMember.deleteMany();
     await prisma.board.deleteMany();
-    await prisma.projectMember.deleteMany();
-    await prisma.project.deleteMany();
+    await prisma.brandMember.deleteMany();
+    await prisma.brand.deleteMany();
     await prisma.boardTemplate.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
@@ -52,11 +52,11 @@ export async function POST(req: NextRequest) {
     if (d.users?.length) {
       await prisma.user.createMany({ data: d.users, skipDuplicates: true });
     }
-    if (d.projects?.length) {
-      await prisma.project.createMany({ data: d.projects, skipDuplicates: true });
+    if (d.brands?.length) {
+      await prisma.brand.createMany({ data: d.brands, skipDuplicates: true });
     }
-    if (d.projectMembers?.length) {
-      await prisma.projectMember.createMany({ data: d.projectMembers, skipDuplicates: true });
+    if (d.brandMembers?.length) {
+      await prisma.brandMember.createMany({ data: d.brandMembers, skipDuplicates: true });
     }
     if (d.boardTemplates?.length) {
       await prisma.boardTemplate.createMany({ data: d.boardTemplates, skipDuplicates: true });

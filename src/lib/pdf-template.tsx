@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
 
 interface BoardRow {
   title: string;
-  project: string;
+  brand: string;
   members: number;
   totalCards: number;
   doneCards: number;
@@ -44,7 +44,7 @@ interface OverdueRow {
 
 interface Stats {
   totalCards: number;
-  totalProjects: number;
+  totalBrands: number;
   totalBoards: number;
   totalUsers: number;
   overdueCount: number;
@@ -72,8 +72,8 @@ export function ReportDocument({ boardRows, overdueRows, stats, generatedBy }: R
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statValue}>{stats.totalProjects}</Text>
-            <Text style={styles.statLabel}>Projects</Text>
+            <Text style={styles.statValue}>{stats.totalBrands}</Text>
+            <Text style={styles.statLabel}>Brands</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{stats.totalBoards}</Text>
@@ -98,7 +98,7 @@ export function ReportDocument({ boardRows, overdueRows, stats, generatedBy }: R
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <View style={styles.cellXl}><Text style={styles.headerText}>Board</Text></View>
-            <View style={styles.cellMd}><Text style={styles.headerText}>Project</Text></View>
+            <View style={styles.cellMd}><Text style={styles.headerText}>Brand</Text></View>
             <View style={styles.cellSm}><Text style={styles.headerText}>Members</Text></View>
             <View style={styles.cellSm}><Text style={styles.headerText}>Cards</Text></View>
             <View style={styles.cellSm}><Text style={styles.headerText}>Done</Text></View>
@@ -107,7 +107,7 @@ export function ReportDocument({ boardRows, overdueRows, stats, generatedBy }: R
           {boardRows.map((row, i) => (
             <View style={styles.tableRow} key={i}>
               <View style={styles.cellXl}><Text style={styles.cellText}>{row.title}</Text></View>
-              <View style={styles.cellMd}><Text style={styles.cellText}>{row.project}</Text></View>
+              <View style={styles.cellMd}><Text style={styles.cellText}>{row.brand}</Text></View>
               <View style={styles.cellSm}><Text style={styles.cellText}>{row.members}</Text></View>
               <View style={styles.cellSm}><Text style={styles.cellText}>{row.totalCards}</Text></View>
               <View style={styles.cellSm}><Text style={styles.cellText}>{row.doneCards}</Text></View>

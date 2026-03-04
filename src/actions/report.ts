@@ -93,7 +93,7 @@ export async function getBoardSummaries() {
       id: true,
       title: true,
       createdAt: true,
-      project: { select: { name: true } },
+      brand: { select: { name: true } },
       _count: { select: { members: true } },
       columns: {
         select: {
@@ -120,7 +120,7 @@ export async function getBoardSummaries() {
     return {
       id: b.id,
       title: b.title,
-      project: b.project?.name || "—",
+      brand: b.brand?.name || "—",
       members: b._count.members,
       totalCards,
       doneCards,
@@ -143,7 +143,7 @@ export async function getExportData() {
       column: {
         select: {
           title: true,
-          board: { select: { title: true, project: { select: { name: true } } } },
+          board: { select: { title: true, brand: { select: { name: true } } } },
         },
       },
       assignees: {
@@ -155,7 +155,7 @@ export async function getExportData() {
   });
 
   return cards.map((c) => ({
-    project: c.column.board.project?.name || "—",
+    brand: c.column.board.brand?.name || "—",
     board: c.column.board.title,
     status: c.column.title,
     title: c.title,

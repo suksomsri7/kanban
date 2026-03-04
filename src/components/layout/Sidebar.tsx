@@ -27,19 +27,18 @@ export default function Sidebar({ user, mobileOpen, onMobileClose }: SidebarProp
   const [collapsed, setCollapsed] = useState(false);
 
   const isSuperAdmin = user.role === "SUPER_ADMIN";
-  const isAdmin = user.role === "ADMIN" || isSuperAdmin;
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Projects", href: "/projects", icon: FolderKanban },
+    { name: "Brands", href: "/brands", icon: FolderKanban },
     { name: "Boards", href: "/boards", icon: Kanban },
-    ...(isAdmin
-      ? [{ name: "Reports", href: "/reports", icon: BarChart3 }]
-      : []),
     ...(isSuperAdmin
-      ? [{ name: "Users", href: "/admin/users", icon: Users }]
+      ? [
+          { name: "Reports", href: "/reports", icon: BarChart3 },
+          { name: "Users", href: "/admin/users", icon: Users },
+          { name: "Settings", href: "/settings", icon: Settings },
+        ]
       : []),
-    { name: "Settings", href: "/settings", icon: Settings },
   ];
 
   const sidebarContent = (

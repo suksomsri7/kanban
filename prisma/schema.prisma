@@ -71,13 +71,13 @@ model User {
   activities     ActivityLog[]
   attachments    Attachment[]
   notifications  Notification[]
-  ownedProjects  Project[]        @relation("ProjectOwner")
-  projectMembers ProjectMember[]
+  ownedBrands    Brand[]          @relation("BrandOwner")
+  brandMembers   BrandMember[]
 }
 
-// ==================== PROJECT ====================
+// ==================== BRAND ====================
 
-model Project {
+model Brand {
   id          String   @id @default(cuid())
   name        String
   description String?
@@ -87,25 +87,25 @@ model Project {
   updatedAt   DateTime @updatedAt
 
   ownerId String
-  owner   User   @relation("ProjectOwner", fields: [ownerId], references: [id])
+  owner   User   @relation("BrandOwner", fields: [ownerId], references: [id])
 
   boards  Board[]
-  members ProjectMember[]
+  members BrandMember[]
 
   @@index([ownerId])
 }
 
-model ProjectMember {
-  id        String    @id @default(cuid())
-  projectId String
-  userId    String
-  role      BoardRole @default(EDITOR)
-  joinedAt  DateTime  @default(now())
+model BrandMember {
+  id      String    @id @default(cuid())
+  brandId String
+  userId  String
+  role    BoardRole @default(EDITOR)
+  joinedAt DateTime @default(now())
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([projectId, userId])
+  @@unique([brandId, userId])
 }
 
 model RefreshToken {
@@ -131,8 +131,8 @@ model Board {
 
   ownerId   String
   owner     User     @relation("BoardOwner", fields: [ownerId], references: [id])
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  brandId String?
+  brand   Brand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
 
   members    BoardMember[]
   columns    Column[]
@@ -140,7 +140,7 @@ model Board {
   activities ActivityLog[]
 
   @@index([ownerId])
-  @@index([projectId])
+  @@index([brandId])
 }
 
 model BoardMember {

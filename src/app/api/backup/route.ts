@@ -14,9 +14,9 @@ export async function GET() {
     return NextResponse.json({ error: "Only Super Admin can export backups" }, { status: 403 });
   }
 
-  const [users, projects, boards, columns, cards, labels, cardLabels, cardAssignees, subtasks, cardDependencies, comments, attachments, boardMembers, projectMembers, boardTemplates, notifications] = await Promise.all([
+  const [users, brands, boards, columns, cards, labels, cardLabels, cardAssignees, subtasks, cardDependencies, comments, attachments, boardMembers, brandMembers, boardTemplates, notifications] = await Promise.all([
     prisma.user.findMany({ select: { id: true, username: true, passwordHash: true, displayName: true, avatar: true, role: true, isActive: true, createdAt: true } }),
-    prisma.project.findMany(),
+    prisma.brand.findMany(),
     prisma.board.findMany(),
     prisma.column.findMany(),
     prisma.card.findMany(),
@@ -28,7 +28,7 @@ export async function GET() {
     prisma.comment.findMany(),
     prisma.attachment.findMany(),
     prisma.boardMember.findMany(),
-    prisma.projectMember.findMany(),
+    prisma.brandMember.findMany(),
     prisma.boardTemplate.findMany(),
     prisma.notification.findMany(),
   ]);
@@ -39,7 +39,7 @@ export async function GET() {
     exportedBy: user.displayName,
     data: {
       users,
-      projects,
+      brands,
       boards,
       columns,
       cards,
@@ -51,7 +51,7 @@ export async function GET() {
       comments,
       attachments,
       boardMembers,
-      projectMembers,
+      brandMembers,
       boardTemplates,
       notifications,
     },

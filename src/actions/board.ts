@@ -10,7 +10,7 @@ const CreateBoardSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   description: z.string().max(500).optional(),
   templateId: z.string().optional(),
-  projectId: z.string().optional(),
+  brandId: z.string().optional(),
 });
 
 const UpdateBoardSchema = z.object({
@@ -47,6 +47,7 @@ export async function getBoards() {
       OR: [
         { ownerId: user.id },
         { members: { some: { userId: user.id } } },
+        { brand: { members: { some: { userId: user.id } } } },
       ],
     },
     include: {
@@ -105,7 +106,7 @@ export async function createBoard(formData: FormData) {
     title: formData.get("title") as string,
     description: (formData.get("description") as string) || undefined,
     templateId: (formData.get("templateId") as string) || undefined,
-    projectId: (formData.get("projectId") as string) || undefined,
+    brandId: (formData.get("brandId") as string) || undefined,
   };
 
   const parsed = CreateBoardSchema.safeParse(raw);
@@ -147,7 +148,7 @@ export async function createBoard(formData: FormData) {
       title: parsed.data.title,
       description: parsed.data.description,
       ownerId: user.id,
-      projectId: parsed.data.projectId || null,
+      brandId: parsed.data.brandId || null,
       members: {
         create: { userId: user.id, role: "OWNER" },
       },

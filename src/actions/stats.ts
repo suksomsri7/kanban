@@ -11,7 +11,7 @@ export async function getDashboardStats() {
   const isSuperAdmin = user.role === "SUPER_ADMIN";
 
   const [
-    projectCount,
+    brandCount,
     boardCount,
     totalCards,
     archivedCards,
@@ -19,7 +19,7 @@ export async function getDashboardStats() {
     overdueTasks,
     highPriorityCards,
   ] = await Promise.all([
-    prisma.project.count({ where: { isArchived: false } }),
+    prisma.brand.count({ where: { isArchived: false } }),
     prisma.board.count({ where: { isArchived: false } }),
     prisma.card.count({ where: { isArchived: false } }),
     prisma.card.count({ where: { isArchived: true } }),
@@ -33,7 +33,7 @@ export async function getDashboardStats() {
   ]);
 
   return {
-    projectCount,
+    brandCount,
     boardCount,
     totalCards,
     archivedCards,

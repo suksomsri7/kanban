@@ -145,7 +145,7 @@ export default function BoardList({ boards, templates, isAdmin }: BoardListProps
               {error}
             </div>
           )}
-          <Input name="title" label="Board Title" required placeholder="e.g. Project Alpha" />
+          <Input name="title" label="Board Title" required placeholder="e.g. Sprint 1" />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Description

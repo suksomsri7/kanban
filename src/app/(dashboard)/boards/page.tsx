@@ -14,7 +14,7 @@ export default async function BoardsPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Boards</h1>
-        <p className="text-gray-500 mt-1">Manage your project boards</p>
+        <p className="text-gray-500 mt-1">Manage your boards</p>
       </div>
       <BoardList boards={boards} templates={templates} isAdmin={isAdmin} />
     </div>

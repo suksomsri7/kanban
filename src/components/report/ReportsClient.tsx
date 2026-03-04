@@ -60,7 +60,7 @@ interface Props {
   boardSummaries: {
     id: string;
     title: string;
-    project: string;
+    brand: string;
     members: number;
     totalCards: number;
     doneCards: number;
@@ -291,7 +291,7 @@ export default function ReportsClient({
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Board</th>
-                  <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase">Project</th>
+                  <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase">Brand</th>
                   <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase">Members</th>
                   <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase">Total Cards</th>
                   <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase">Done</th>
@@ -302,7 +302,7 @@ export default function ReportsClient({
                 {boardSummaries.map((b) => (
                   <tr key={b.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3 text-sm font-medium text-gray-900">{b.title}</td>
-                    <td className="px-3 py-3 text-sm text-gray-500">{b.project}</td>
+                    <td className="px-3 py-3 text-sm text-gray-500">{b.brand}</td>
                     <td className="text-center px-3 py-3 text-sm text-gray-700">{b.members}</td>
                     <td className="text-center px-3 py-3 text-sm text-gray-700">{b.totalCards}</td>
                     <td className="text-center px-3 py-3 text-sm text-green-600 font-medium">{b.doneCards}</td>

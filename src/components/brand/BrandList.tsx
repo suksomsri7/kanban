@@ -7,10 +7,10 @@ import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import Input from "@/components/ui/Input";
 import Avatar from "@/components/ui/Avatar";
-import { createProject, deleteProject } from "@/actions/project";
+import { createBrand, deleteBrand } from "@/actions/brand";
 import { useRouter } from "next/navigation";
 
-interface ProjectData {
+interface BrandData {
   id: string;
   name: string;
   description: string | null;
@@ -20,9 +20,9 @@ interface ProjectData {
   _count: { boards: number };
 }
 
-interface ProjectListProps {
-  projects: ProjectData[];
-  isAdmin: boolean;
+interface BrandListProps {
+  brands: BrandData[];
+  isSuperAdmin: boolean;
 }
 
 const colorPresets = [
@@ -30,7 +30,7 @@ const colorPresets = [
   "#dc2626", "#ea580c", "#ca8a04", "#0891b2",
 ];
 
-export default function ProjectList({ projects, isAdmin }: ProjectListProps) {
+export default function BrandList({ brands, isSuperAdmin }: BrandListProps) {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [selectedColor, setSelectedColor] = useState(colorPresets[0]);
@@ -44,56 +44,56 @@ export default function ProjectList({ projects, isAdmin }: ProjectListProps) {
 
     const formData = new FormData(e.currentTarget);
     formData.set("color", selectedColor);
-    const result = await createProject(formData);
+    const result = await createBrand(formData);
 
     if (result.error) {
       setError(result.error);
     } else {
       setShowCreate(false);
-      router.push(`/project/${result.projectId}`);
+      router.push(`/brand/${result.brandId}`);
     }
     setLoading(false);
   }
 
-  async function handleDelete(projectId: string, name: string) {
-    if (!confirm(`Delete project "${name}"? Boards inside will be unlinked.`)) return;
-    await deleteProject(projectId);
+  async function handleDelete(brandId: string, name: string) {
+    if (!confirm(`Delete brand "${name}"? Boards inside will be unlinked.`)) return;
+    await deleteBrand(brandId);
     router.refresh();
   }
 
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {projects.map((project) => (
+        {brands.map((brand) => (
           <div
-            key={project.id}
+            key={brand.id}
             className="group bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all overflow-hidden"
           >
-            <Link href={`/project/${project.id}`} className="block">
+            <Link href={`/brand/${brand.id}`} className="block">
               <div
                 className="h-2 w-full"
-                style={{ backgroundColor: project.color || "#111827" }}
+                style={{ backgroundColor: brand.color || "#111827" }}
               />
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div
                     className="w-10 h-10 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: project.color || "#111827" }}
+                    style={{ backgroundColor: brand.color || "#111827" }}
                   >
                     <FolderKanban size={20} className="text-white" />
                   </div>
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-1 truncate">
-                  {project.name}
+                  {brand.name}
                 </h3>
-                {project.description && (
+                {brand.description && (
                   <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                    {project.description}
+                    {brand.description}
                   </p>
                 )}
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex -space-x-2">
-                    {project.members.slice(0, 4).map((m) => (
+                    {brand.members.slice(0, 4).map((m) => (
                       <Avatar
                         key={m.user.id}
                         name={m.user.displayName}
@@ -101,23 +101,23 @@ export default function ProjectList({ projects, isAdmin }: ProjectListProps) {
                         size="sm"
                       />
                     ))}
-                    {project.members.length > 4 && (
+                    {brand.members.length > 4 && (
                       <div className="h-7 w-7 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-medium">
-                        +{project.members.length - 4}
+                        +{brand.members.length - 4}
                       </div>
                     )}
                   </div>
                   <span className="flex items-center gap-1 text-xs text-gray-400">
                     <Kanban size={12} />
-                    {project._count.boards} boards
+                    {brand._count.boards} boards
                   </span>
                 </div>
               </div>
             </Link>
-            {isAdmin && (
+            {isSuperAdmin && (
               <div className="px-5 pb-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
-                  onClick={() => handleDelete(project.id, project.name)}
+                  onClick={() => handleDelete(brand.id, brand.name)}
                   className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
                 >
                   <Trash2 size={12} /> Delete
@@ -127,33 +127,33 @@ export default function ProjectList({ projects, isAdmin }: ProjectListProps) {
           </div>
         ))}
 
-        {isAdmin && (
+        {isSuperAdmin && (
           <button
             onClick={() => setShowCreate(true)}
             className="flex flex-col items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed border-gray-200 hover:border-gray-400 hover:bg-gray-50 text-gray-400 hover:text-gray-600 transition-all min-h-[180px]"
           >
             <Plus size={24} />
-            <span className="text-sm font-medium">New Project</span>
+            <span className="text-sm font-medium">New Brand</span>
           </button>
         )}
       </div>
 
-      {projects.length === 0 && !isAdmin && (
+      {brands.length === 0 && !isSuperAdmin && (
         <div className="text-center py-16">
           <FolderKanban size={48} className="mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
-          <p className="text-gray-500 text-sm">You haven&apos;t been added to any projects yet.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No brands yet</h3>
+          <p className="text-gray-500 text-sm">You haven&apos;t been added to any brands yet.</p>
         </div>
       )}
 
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create New Project">
+      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create New Brand">
         <form onSubmit={handleCreate} className="space-y-4">
           {error && (
             <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-100">
               {error}
             </div>
           )}
-          <Input name="name" label="Project Name" required placeholder="e.g. Website Redesign" />
+          <Input name="name" label="Brand Name" required placeholder="e.g. Company Alpha" />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
@@ -184,7 +184,7 @@ export default function ProjectList({ projects, isAdmin }: ProjectListProps) {
               Cancel
             </Button>
             <Button type="submit" loading={loading}>
-              Create Project
+              Create Brand
             </Button>
           </div>
         </form>

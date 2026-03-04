@@ -152,27 +152,27 @@ async function main() {
   });
   console.log("✓ Board templates created (4)");
 
-  // ── Projects ──
-  const projectDev = await prisma.project.create({
+  // ── Brands ──
+  const brandDev = await prisma.brand.create({
     data: {
       name: "Company Website",
-      description: "Full company website redesign and development project",
+      description: "Full company website redesign and development",
       color: "#111827",
-      ownerId: somchai.id,
+      ownerId: superAdmin.id,
       members: {
         create: [
-          { userId: somchai.id, role: "OWNER" },
+          { userId: superAdmin.id, role: "OWNER" },
+          { userId: somchai.id, role: "EDITOR" },
           { userId: siriporn.id, role: "EDITOR" },
           { userId: wichai.id, role: "EDITOR" },
           { userId: nattaya.id, role: "EDITOR" },
-          { userId: superAdmin.id, role: "EDITOR" },
           { userId: guest.id, role: "VIEWER" },
         ],
       },
     },
   });
 
-  const projectMobile = await prisma.project.create({
+  const brandMobile = await prisma.brand.create({
     data: {
       name: "Mobile App",
       description: "Mobile application development for iOS and Android",
@@ -188,15 +188,16 @@ async function main() {
     },
   });
 
-  const projectMarketing = await prisma.project.create({
+  const brandMarketing = await prisma.brand.create({
     data: {
       name: "Marketing 2026",
       description: "All marketing campaigns and content for 2026",
       color: "#059669",
-      ownerId: somchai.id,
+      ownerId: superAdmin.id,
       members: {
         create: [
-          { userId: somchai.id, role: "OWNER" },
+          { userId: superAdmin.id, role: "OWNER" },
+          { userId: somchai.id, role: "EDITOR" },
           { userId: nattaya.id, role: "EDITOR" },
           { userId: siriporn.id, role: "VIEWER" },
         ],
@@ -204,7 +205,7 @@ async function main() {
     },
   });
 
-  console.log("✓ Projects created (3)");
+  console.log("✓ Brands created (3)");
 
   // ── Board 1: Website Redesign ──
   const board1 = await prisma.board.create({
@@ -213,7 +214,7 @@ async function main() {
       description: "Redesign company website with modern UI/UX",
       color: "#111827",
       ownerId: somchai.id,
-      projectId: projectDev.id,
+      brandId: brandDev.id,
       members: {
         create: [
           { userId: somchai.id, role: "OWNER" },
@@ -442,7 +443,7 @@ async function main() {
       description: "Major update for the mobile application",
       color: "#1e40af",
       ownerId: superAdmin.id,
-      projectId: projectMobile.id,
+      brandId: brandMobile.id,
       members: {
         create: [
           { userId: superAdmin.id, role: "OWNER" },
@@ -555,7 +556,7 @@ async function main() {
       description: "Q2 marketing campaigns and content planning",
       color: "#059669",
       ownerId: somchai.id,
-      projectId: projectMarketing.id,
+      brandId: brandMarketing.id,
       members: {
         create: [
           { userId: somchai.id, role: "OWNER" },

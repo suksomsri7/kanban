@@ -1,30 +1,30 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireAuth, requireAdmin } from "@/lib/auth-utils";
+import { requireAuth, requireSuperAdmin } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
 import type { SessionUser } from "@/types";
 
-const CreateProjectSchema = z.object({
+const CreateBrandSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(500).optional(),
   color: z.string().optional(),
 });
 
-const UpdateProjectSchema = z.object({
+const UpdateBrandSchema = z.object({
   id: z.string(),
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),
   color: z.string().optional(),
 });
 
-export async function getProjects() {
+export async function getBrands() {
   const session = await requireAuth();
   const user = session.user as SessionUser;
 
   if (user.role === "SUPER_ADMIN") {
-    return prisma.project.findMany({
+    return prisma.brand.findMany({
       where: { isArchived: false },
       include: {
         owner: { select: { id: true, displayName: true, avatar: true } },
@@ -39,13 +39,10 @@ export async function getProjects() {
     });
   }
 
-  return prisma.project.findMany({
+  return prisma.brand.findMany({
     where: {
       isArchived: false,
-      OR: [
-        { ownerId: user.id },
-        { members: { some: { userId: user.id } } },
-      ],
+      members: { some: { userId: user.id } },
     },
     include: {
       owner: { select: { id: true, displayName: true, avatar: true } },
@@ -60,16 +57,17 @@ export async function getProjects() {
   });
 }
 
-export async function getProjectById(projectId: string) {
-  await requireAuth();
+export async function getBrandById(brandId: string) {
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
 
-  return prisma.project.findUnique({
-    where: { id: projectId },
+  const brand = await prisma.brand.findUnique({
+    where: { id: brandId },
     include: {
       owner: { select: { id: true, displayName: true, username: true, avatar: true } },
       members: {
         include: {
-          user: { select: { id: true, displayName: true, username: true, avatar: true } },
+          user: { select: { id: true, displayName: true, username: true, avatar: true, role: true } },
         },
       },
       boards: {
@@ -87,10 +85,19 @@ export async function getProjectById(projectId: string) {
       },
     },
   });
+
+  if (!brand) return null;
+
+  if (user.role !== "SUPER_ADMIN") {
+    const isMember = brand.members.some((m) => m.userId === user.id);
+    if (!isMember) return null;
+  }
+
+  return brand;
 }
 
-export async function createProject(formData: FormData) {
-  const session = await requireAdmin();
+export async function createBrand(formData: FormData) {
+  const session = await requireSuperAdmin();
   const user = session.user as SessionUser;
 
   const raw = {
@@ -99,12 +106,12 @@ export async function createProject(formData: FormData) {
     color: (formData.get("color") as string) || undefined,
   };
 
-  const parsed = CreateProjectSchema.safeParse(raw);
+  const parsed = CreateBrandSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message };
   }
 
-  const project = await prisma.project.create({
+  const brand = await prisma.brand.create({
     data: {
       name: parsed.data.name,
       description: parsed.data.description,
@@ -116,12 +123,12 @@ export async function createProject(formData: FormData) {
     },
   });
 
-  revalidatePath("/projects");
-  return { success: true, projectId: project.id };
+  revalidatePath("/brands");
+  return { success: true, brandId: brand.id };
 }
 
-export async function updateProject(formData: FormData) {
-  await requireAuth();
+export async function updateBrand(formData: FormData) {
+  await requireSuperAdmin();
 
   const raw = {
     id: formData.get("id") as string,
@@ -130,55 +137,55 @@ export async function updateProject(formData: FormData) {
     color: (formData.get("color") as string) || undefined,
   };
 
-  const parsed = UpdateProjectSchema.safeParse(raw);
+  const parsed = UpdateBrandSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message };
   }
 
   const { id, ...data } = parsed.data;
-  await prisma.project.update({ where: { id }, data });
+  await prisma.brand.update({ where: { id }, data });
 
-  revalidatePath("/projects");
-  revalidatePath(`/project/${id}`);
+  revalidatePath("/brands");
+  revalidatePath(`/brand/${id}`);
   return { success: true };
 }
 
-export async function deleteProject(projectId: string) {
-  await requireAdmin();
+export async function deleteBrand(brandId: string) {
+  await requireSuperAdmin();
 
-  await prisma.project.update({
-    where: { id: projectId },
+  await prisma.brand.update({
+    where: { id: brandId },
     data: { isArchived: true },
   });
 
-  revalidatePath("/projects");
+  revalidatePath("/brands");
   return { success: true };
 }
 
-export async function addProjectMember(
-  projectId: string,
+export async function addBrandMember(
+  brandId: string,
   userId: string,
   role: "EDITOR" | "VIEWER" = "EDITOR"
 ) {
-  await requireAuth();
+  await requireSuperAdmin();
 
-  await prisma.projectMember.upsert({
-    where: { projectId_userId: { projectId, userId } },
-    create: { projectId, userId, role },
+  await prisma.brandMember.upsert({
+    where: { brandId_userId: { brandId, userId } },
+    create: { brandId, userId, role },
     update: { role },
   });
 
-  revalidatePath(`/project/${projectId}`);
+  revalidatePath(`/brand/${brandId}`);
   return { success: true };
 }
 
-export async function removeProjectMember(projectId: string, userId: string) {
-  await requireAuth();
+export async function removeBrandMember(brandId: string, userId: string) {
+  await requireSuperAdmin();
 
-  await prisma.projectMember.deleteMany({
-    where: { projectId, userId },
+  await prisma.brandMember.deleteMany({
+    where: { brandId, userId },
   });
 
-  revalidatePath(`/project/${projectId}`);
+  revalidatePath(`/brand/${brandId}`);
   return { success: true };
 }
