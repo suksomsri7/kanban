@@ -29,17 +29,17 @@ function LoginForm() {
         redirect: false,
       });
 
-      // #region agent log
-      console.log("[DEBUG-AUTH] signIn result:", JSON.stringify(result));
-      // #endregion
-
       if (result?.error) {
-        setError(`Auth error: ${result.error} | status: ${result.status} | url: ${result.url}`);
+        setError(`Auth error: ${result.error} | status: ${result.status}`);
       } else if (result?.ok) {
-        router.push(callbackUrl);
-        router.refresh();
+        // #region agent log
+        const sessionRes = await fetch("/api/auth/session");
+        const sessionData = await sessionRes.json();
+        const cookies = document.cookie;
+        setError(`DEBUG OK | cookies: [${cookies}] | session: ${JSON.stringify(sessionData)}`);
+        // #endregion
       } else {
-        setError(`Unexpected result: ${JSON.stringify(result)}`);
+        setError(`Unexpected: ${JSON.stringify(result)}`);
       }
     } catch (err: unknown) {
       setError(`Exception: ${err instanceof Error ? err.message : String(err)}`);
