@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -45,6 +45,10 @@ interface BoardViewProps {
 export default function BoardView({ board, currentUser, allUsers }: BoardViewProps) {
   useBoardRealtime(board.id);
   const [columns, setColumns] = useState(board.columns);
+
+  useEffect(() => {
+    setColumns(board.columns);
+  }, [board.columns]);
 
   // #region agent log
   const boardCardCount = board.columns.reduce((s, c) => s + c.cards.length, 0);
