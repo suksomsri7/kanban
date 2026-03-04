@@ -28,10 +28,16 @@ export default function AddCard({ columnId, lastOrder }: AddCardProps) {
     formData.set("columnId", columnId);
     formData.set("order", newOrder);
 
-    await createCard(formData);
+    const result = await createCard(formData);
+    // #region agent log
+    console.log('[DEBUG-d14894] AddCard createCard result', result);
+    // #endregion
     setTitle("");
     setLoading(false);
     router.refresh();
+    // #region agent log
+    console.log('[DEBUG-d14894] AddCard router.refresh called');
+    // #endregion
   }
 
   if (!adding) {

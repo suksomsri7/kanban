@@ -47,8 +47,20 @@ export default function BoardView({ board, currentUser, allUsers }: BoardViewPro
   const [columns, setColumns] = useState(board.columns);
 
   useEffect(() => {
+    // #region agent log
+    const propCount = board.columns.reduce((s: number, c: ColumnData) => s + c.cards.length, 0);
+    console.log('[DEBUG-d14894] useEffect sync fired', { propCards: propCount });
+    // #endregion
     setColumns(board.columns);
   }, [board.columns]);
+
+  // #region agent log
+  const _boardCards = board.columns.reduce((s: number, c: ColumnData) => s + c.cards.length, 0);
+  const _stateCards = columns.reduce((s: number, c: ColumnData) => s + c.cards.length, 0);
+  if (typeof window !== 'undefined') {
+    console.log('[DEBUG-d14894] BoardView render', { boardPropCards: _boardCards, stateCards: _stateCards });
+  }
+  // #endregion
 
   const [activeCard, setActiveCard] = useState<CardData | null>(null);
   const [activeColumn, setActiveColumn] = useState<ColumnData | null>(null);
