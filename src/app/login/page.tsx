@@ -29,14 +29,20 @@ function LoginForm() {
         redirect: false,
       });
 
+      // #region agent log
+      console.log("[DEBUG-AUTH] signIn result:", JSON.stringify(result));
+      // #endregion
+
       if (result?.error) {
-        setError("Invalid username or password");
-      } else {
+        setError(`Auth error: ${result.error} | status: ${result.status} | url: ${result.url}`);
+      } else if (result?.ok) {
         router.push(callbackUrl);
         router.refresh();
+      } else {
+        setError(`Unexpected result: ${JSON.stringify(result)}`);
       }
-    } catch {
-      setError("An unexpected error occurred");
+    } catch (err: unknown) {
+      setError(`Exception: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
