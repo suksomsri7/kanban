@@ -132,7 +132,7 @@ model Board {
   ownerId   String
   owner     User     @relation("BoardOwner", fields: [ownerId], references: [id])
   brandId String?
-  brand   Brand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  brand   Brand? @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   members    BoardMember[]
   columns    Column[]

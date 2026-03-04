@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import type { SessionUser } from "@/types";
 import Link from "next/link";
 import DashboardClient from "@/components/dashboard/DashboardClient";
+import BrandHeader from "@/components/brand/BrandHeader";
 import {
   Kanban,
   ListChecks,
@@ -42,9 +43,16 @@ export default async function BrandDashboardPage({ params }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">{brand.name}</p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 mt-1">{brand.name}</p>
+        </div>
+        <BrandHeader
+          brandId={id}
+          brandName={brand.name}
+          isSuperAdmin={user.role === "SUPER_ADMIN"}
+        />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
