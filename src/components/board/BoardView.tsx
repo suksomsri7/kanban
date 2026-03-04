@@ -45,6 +45,14 @@ interface BoardViewProps {
 export default function BoardView({ board, currentUser, allUsers }: BoardViewProps) {
   useBoardRealtime(board.id);
   const [columns, setColumns] = useState(board.columns);
+
+  // #region agent log
+  const boardCardCount = board.columns.reduce((s, c) => s + c.cards.length, 0);
+  const stateCardCount = columns.reduce((s, c) => s + c.cards.length, 0);
+  if (typeof window !== 'undefined') {
+    console.log('[DEBUG-d14894] BoardView render', { boardPropCards: boardCardCount, stateCards: stateCardCount });
+  }
+  // #endregion
   const [activeCard, setActiveCard] = useState<CardData | null>(null);
   const [activeColumn, setActiveColumn] = useState<ColumnData | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
