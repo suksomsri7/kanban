@@ -105,18 +105,9 @@ export default function CardModal({
 
   async function handleDelete() {
     if (!confirm("Delete this card permanently?")) return;
-    // #region agent log
-    console.log('[DEBUG-d14894] deleteCard called', { cardId });
-    // #endregion
-    const result = await deleteCard(cardId);
-    // #region agent log
-    console.log('[DEBUG-d14894] deleteCard result', result);
-    // #endregion
+    await deleteCard(cardId);
     onClose();
     router.refresh();
-    // #region agent log
-    console.log('[DEBUG-d14894] router.refresh called after delete');
-    // #endregion
   }
 
   async function handleToggleLabel(labelId: string) {
