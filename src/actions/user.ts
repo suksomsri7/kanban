@@ -170,8 +170,13 @@ export async function permanentlyDeleteUser(userId: string): Promise<{ success?:
   if (!user) return { error: "User not found" };
   if (user.role === "SUPER_ADMIN") return { error: "Cannot delete a Super Admin" };
 
+  const superAdmin = await prisma.user.findFirst({ where: { role: "SUPER_ADMIN" } });
+  if (!superAdmin) return { error: "No Super Admin found to reassign ownership" };
+
   try {
     await prisma.$transaction(async (tx) => {
+      await tx.board.updateMany({ where: { ownerId: userId }, data: { ownerId: superAdmin.id } });
+      await tx.brand.updateMany({ where: { ownerId: userId }, data: { ownerId: superAdmin.id } });
       await tx.comment.deleteMany({ where: { authorId: userId } });
       await tx.cardAssignee.deleteMany({ where: { userId } });
       await tx.activityLog.deleteMany({ where: { userId } });
@@ -186,6 +191,6 @@ export async function permanentlyDeleteUser(userId: string): Promise<{ success?:
     revalidatePath("/admin/roles");
     return { success: true };
   } catch {
-    return { error: "Failed to delete user. The user may own boards or brands that need to be reassigned first." };
+    return { error: "Failed to delete user" };
   }
 }
