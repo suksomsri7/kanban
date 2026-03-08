@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -18,7 +18,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { generateKeyBetween } from "fractional-indexing";
-import { ArrowLeft, Activity } from "lucide-react";
+import { ArrowLeft, Activity, Pencil, Check, X } from "lucide-react";
 import Link from "next/link";
 import Column from "@/components/column/Column";
 import CardThumb from "@/components/card/CardThumb";
@@ -28,6 +28,7 @@ import ActivityPanel from "./ActivityPanel";
 import BoardFilter, { emptyFilter, type FilterState } from "./BoardFilter";
 import { reorderCards } from "@/actions/card";
 import { reorderColumns } from "@/actions/column";
+import { updateBoard } from "@/actions/board";
 import type { SessionUser } from "@/types";
 import { useBoardRealtime } from "@/hooks/useRealtime";
 
@@ -55,8 +56,25 @@ export default function BoardView({ board, currentUser, allUsers }: BoardViewPro
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [showActivity, setShowActivity] = useState(false);
   const [filter, setFilter] = useState<FilterState>(emptyFilter);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState(board.title);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const isEditor = currentUser.role !== "GUEST";
+
+  async function handleSaveTitle() {
+    const trimmed = editTitle.trim();
+    if (!trimmed || trimmed === board.title) {
+      setEditTitle(board.title);
+      setIsEditingTitle(false);
+      return;
+    }
+    const formData = new FormData();
+    formData.set("id", board.id);
+    formData.set("title", trimmed);
+    await updateBoard(formData);
+    setIsEditingTitle(false);
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -207,8 +225,42 @@ export default function BoardView({ board, currentUser, allUsers }: BoardViewPro
             <ArrowLeft size={20} />
           </Link>
           <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate">{board.title}</h1>
-            {board.description && (
+            {isEditingTitle ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveTitle();
+                    if (e.key === "Escape") { setEditTitle(board.title); setIsEditingTitle(false); }
+                  }}
+                  autoFocus
+                  className="text-base sm:text-lg font-bold text-gray-900 bg-white border border-gray-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent min-w-0"
+                />
+                <button onClick={handleSaveTitle} className="p-1 rounded-lg hover:bg-green-50 text-green-600 transition-colors" title="Save">
+                  <Check size={16} />
+                </button>
+                <button onClick={() => { setEditTitle(board.title); setIsEditingTitle(false); }} className="p-1 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="Cancel">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 group/title">
+                <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate">{board.title}</h1>
+                {isEditor && (
+                  <button
+                    onClick={() => { setEditTitle(board.title); setIsEditingTitle(true); }}
+                    className="p-1 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-gray-600 opacity-0 group-hover/title:opacity-100 transition-all"
+                    title="Edit board name"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
+              </div>
+            )}
+            {board.description && !isEditingTitle && (
               <p className="text-xs text-gray-500 truncate hidden sm:block">{board.description}</p>
             )}
           </div>

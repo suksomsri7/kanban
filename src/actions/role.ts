@@ -8,13 +8,13 @@ export async function getUsersWithAccess() {
   await requireSuperAdmin();
 
   return prisma.user.findMany({
-    where: { isActive: true },
     select: {
       id: true,
       username: true,
       displayName: true,
       role: true,
       avatar: true,
+      isActive: true,
       brandMembers: {
         select: {
           brandId: true,

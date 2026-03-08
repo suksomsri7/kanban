@@ -29,6 +29,7 @@ type UserWithAccess = {
   displayName: string;
   role: string;
   avatar: string | null;
+  isActive: boolean;
   brandMembers: {
     brandId: string;
     role: string;
@@ -154,6 +155,7 @@ export default function RolesManager({ users, brandsWithBoards }: Props) {
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge>{user.role.replace("_", " ")}</Badge>
+                    {!user.isActive && <Badge variant="default">Inactive</Badge>}
                     <span className="text-xs text-gray-400">
                       {user.brandMembers.length} brands · {user.boardMembers.length} boards
                     </span>

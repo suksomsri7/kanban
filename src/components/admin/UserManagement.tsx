@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, RotateCcw, UserX, Pencil } from "lucide-react";
+import { Plus, RotateCcw, UserX, Pencil, Trash2 } from "lucide-react";
 import { Role } from "@prisma/client";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
@@ -13,6 +13,7 @@ import {
   updateUser,
   resetUserPassword,
   deleteUser,
+  permanentlyDeleteUser,
 } from "@/actions/user";
 
 interface UserData {
@@ -108,6 +109,21 @@ export default function UserManagement({ initialUsers }: UserManagementProps) {
     } else {
       window.location.reload();
     }
+  }
+
+  async function handlePermanentDelete(userId: string, displayName: string) {
+    if (!confirm(`Permanently delete "${displayName}"? This cannot be undone.`)) return;
+    clearMessages();
+    setLoading(true);
+
+    const result = await permanentlyDeleteUser(userId);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setSuccess("User deleted permanently");
+      window.location.reload();
+    }
+    setLoading(false);
   }
 
   function roleBadgeVariant(
@@ -221,6 +237,15 @@ export default function UserManagement({ initialUsers }: UserManagementProps) {
                         title="Deactivate user"
                       >
                         <UserX size={16} />
+                      </button>
+                    )}
+                    {u.role !== "SUPER_ADMIN" && (
+                      <button
+                        onClick={() => handlePermanentDelete(u.id, u.displayName)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete user permanently"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     )}
                   </div>
