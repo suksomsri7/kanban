@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
 import type { SessionUser } from "@/types";
 import { logActivity } from "@/actions/activity";
+import { requireBoardPermission } from "@/lib/permissions";
 
 const CreateBoardSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -202,6 +203,20 @@ export async function updateBoard(formData: FormData) {
 
   const { id, ...data } = parsed.data;
 
+  if (data.color && user.role !== "SUPER_ADMIN") {
+    return { error: "Only Super Admin can change board color" };
+  }
+
+  if (data.title && user.role !== "SUPER_ADMIN" && user.role !== "ADMIN") {
+    const { allowed } = await requireBoardPermission(id, user.id, user.role);
+    if (!allowed) return { error: "Permission denied" };
+  }
+
+  if (data.description !== undefined) {
+    const { allowed, permissions: perms } = await requireBoardPermission(id, user.id, user.role, "canEditBoardDescription");
+    if (!allowed && !perms?.isFullAccess) return { error: "Permission denied: canEditBoardDescription" };
+  }
+
   const updatedBoard = await prisma.board.update({ where: { id }, data });
   await logActivity("BOARD_UPDATED", id, user.id, { ...data });
 
@@ -257,8 +272,11 @@ export async function removeBoardMember(boardId: string, userId: string) {
 }
 
 export async function duplicateBoard(boardId: string) {
-  const session = await requireAdmin();
+  const session = await requireAuth();
   const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canDuplicateBoard");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   const source = await prisma.board.findUnique({
     where: { id: boardId },

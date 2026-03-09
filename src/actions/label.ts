@@ -3,9 +3,15 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
+import type { SessionUser } from "@/types";
+import { requireBoardPermission } from "@/lib/permissions";
 
 export async function createLabel(boardId: string, name: string, color: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canManageLabels");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   const trimmed = name.trim();
   if (!trimmed) return { error: "Name is required" };
@@ -25,7 +31,11 @@ export async function createLabel(boardId: string, name: string, color: string) 
 }
 
 export async function updateLabel(labelId: string, name: string, color: string, boardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canManageLabels");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   const trimmed = name.trim();
   if (!trimmed) return { error: "Name is required" };
@@ -48,7 +58,11 @@ export async function updateLabel(labelId: string, name: string, color: string, 
 }
 
 export async function deleteLabel(labelId: string, boardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canManageLabels");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   await prisma.label.delete({ where: { id: labelId } });
 

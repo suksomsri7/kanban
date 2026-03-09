@@ -8,6 +8,7 @@ import type { SessionUser } from "@/types";
 import { createNotification, notifyUsers } from "@/actions/notification";
 import { logActivity } from "@/actions/activity";
 import { triggerBoardEvent } from "@/lib/pusher-server";
+import { requireBoardPermission } from "@/lib/permissions";
 
 const CreateCardSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -81,6 +82,9 @@ export async function createCard(formData: FormData) {
 
   if (!column) return { error: "Column not found" };
 
+  const { allowed, error: permErr } = await requireBoardPermission(column.boardId, user.id, user.role, "canCreateCard");
+  if (!allowed) return { error: permErr || "Permission denied" };
+
   const card = await prisma.card.create({
     data: {
       title: parsed.data.title,
@@ -119,6 +123,39 @@ export async function updateCard(formData: FormData) {
 
   const { id, dueDate, ...data } = parsed.data;
 
+  const existing = await prisma.card.findUnique({
+    where: { id },
+    select: { column: { select: { boardId: true } }, lockedFields: true },
+  });
+  if (!existing) return { error: "Card not found" };
+
+  const boardId = existing.column.boardId;
+  const { allowed, permissions: perms, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canView");
+  if (!allowed) return { error: permErr || "Permission denied" };
+
+  if (!perms.isFullAccess) {
+    const lf = existing.lockedFields;
+    const locked: string[] = (() => {
+      if (!lf) return [];
+      const v = typeof lf === "string" ? JSON.parse(lf) : lf;
+      return Array.isArray(v) ? v : [];
+    })();
+
+    const fieldPermMap: Record<string, { perm: keyof typeof perms; lockKey: string }> = {
+      title: { perm: "canEditCardTitle", lockKey: "title" },
+      description: { perm: "canEditCardDescription", lockKey: "description" },
+      priority: { perm: "canEditCardPriority", lockKey: "priority" },
+      dueDate: { perm: "canEditCardDueDate", lockKey: "dueDate" },
+    };
+
+    for (const [field, { perm, lockKey }] of Object.entries(fieldPermMap)) {
+      const val = field === "dueDate" ? dueDate : (data as Record<string, unknown>)[field];
+      if (val === undefined) continue;
+      if (!perms[perm]) return { error: `Permission denied: ${perm}` };
+      if (!perms.canLockCard && locked.includes(lockKey)) return { error: `Field "${field}" is locked` };
+    }
+  }
+
   const card = await prisma.card.update({
     where: { id },
     data: {
@@ -142,7 +179,11 @@ export async function moveCard(
   newOrder: string,
   boardId: string
 ) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canMoveCard");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   await prisma.card.update({
     where: { id: cardId },
@@ -156,6 +197,9 @@ export async function moveCard(
 export async function reorderCards(boardId: string, updates: { id: string; columnId: string; order: string }[]) {
   const session = await requireAuth();
   const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canMoveCard");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   await prisma.$transaction(
     updates.map((u) =>
@@ -186,6 +230,9 @@ export async function deleteCard(cardId: string) {
 
   if (!card) return { error: "Card not found" };
 
+  const { allowed, error: permErr } = await requireBoardPermission(card.column.boardId, user.id, user.role, "canDeleteCard");
+  if (!allowed) return { error: permErr || "Permission denied" };
+
   await logActivity("CARD_DELETED", card.column.boardId, user.id, { title: card.title });
   await prisma.card.delete({ where: { id: cardId } });
 
@@ -196,6 +243,15 @@ export async function deleteCard(cardId: string) {
 export async function archiveCard(cardId: string) {
   const session = await requireAuth();
   const user = session.user as SessionUser;
+
+  const existing = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: { column: { select: { boardId: true } } },
+  });
+  if (!existing) return { error: "Card not found" };
+
+  const { allowed, error: permErr } = await requireBoardPermission(existing.column.boardId, user.id, user.role, "canDeleteCard");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   const card = await prisma.card.update({
     where: { id: cardId },
@@ -210,7 +266,11 @@ export async function archiveCard(cardId: string) {
 }
 
 export async function toggleCardLabel(cardId: string, labelId: string, boardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canEditCardLabels");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   const existing = await prisma.cardLabel.findUnique({
     where: { cardId_labelId: { cardId, labelId } },
@@ -229,6 +289,9 @@ export async function toggleCardLabel(cardId: string, labelId: string, boardId: 
 export async function toggleCardAssignee(cardId: string, userId: string, boardId: string) {
   const session = await requireAuth();
   const currentUser = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, currentUser.id, currentUser.role, "canEditCardAssignees");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   const existing = await prisma.cardAssignee.findUnique({
     where: { cardId_userId: { cardId, userId } },
@@ -259,6 +322,9 @@ export async function toggleCardAssignee(cardId: string, userId: string, boardId
 export async function addComment(cardId: string, content: string, boardId: string) {
   const session = await requireAuth();
   const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canComment");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   if (!content.trim()) return { error: "Comment cannot be empty" };
 
@@ -313,6 +379,9 @@ export async function deleteComment(commentId: string, boardId: string) {
   const session = await requireAuth();
   const user = session.user as SessionUser;
 
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canComment");
+  if (!allowed) return { error: permErr || "Permission denied" };
+
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
     select: { cardId: true },
@@ -330,7 +399,11 @@ export async function updateCardLockedFields(
   lockedFields: string[],
   boardId: string
 ) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canLockCard");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   await prisma.card.update({
     where: { id: cardId },

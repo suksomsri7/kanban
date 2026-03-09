@@ -3,9 +3,15 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
+import type { SessionUser } from "@/types";
+import { requireBoardPermission } from "@/lib/permissions";
 
 export async function addDependency(dependentId: string, blockingId: string, boardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canAddDependency");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   if (dependentId === blockingId) {
     return { error: "A card cannot depend on itself" };
@@ -30,7 +36,11 @@ export async function addDependency(dependentId: string, blockingId: string, boa
 }
 
 export async function removeDependency(dependencyId: string, boardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canAddDependency");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   await prisma.cardDependency.delete({ where: { id: dependencyId } });
 

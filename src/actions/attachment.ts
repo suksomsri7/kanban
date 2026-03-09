@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/actions/activity";
 import type { SessionUser } from "@/types";
+import { requireBoardPermission } from "@/lib/permissions";
 
 export async function createAttachmentRecord(
   cardId: string,
@@ -16,6 +17,9 @@ export async function createAttachmentRecord(
 ) {
   const session = await requireAuth();
   const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canUploadAttachment");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   await prisma.attachment.create({
     data: {
@@ -37,6 +41,9 @@ export async function createAttachmentRecord(
 export async function deleteAttachment(attachmentId: string, boardId: string) {
   const session = await requireAuth();
   const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canUploadAttachment");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   const att = await prisma.attachment.findUnique({
     where: { id: attachmentId },

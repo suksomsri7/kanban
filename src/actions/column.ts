@@ -7,6 +7,7 @@ import { z } from "zod/v4";
 import { logActivity } from "@/actions/activity";
 import { triggerBoardEvent } from "@/lib/pusher-server";
 import type { SessionUser } from "@/types";
+import { requireBoardPermission } from "@/lib/permissions";
 
 const CreateColumnSchema = z.object({
   title: z.string().min(1, "Title is required").max(50),
@@ -29,6 +30,9 @@ export async function createColumn(formData: FormData) {
     return { error: parsed.error.issues[0].message };
   }
 
+  const { allowed, error: permErr } = await requireBoardPermission(parsed.data.boardId, user.id, user.role, "canAddColumn");
+  if (!allowed) return { error: permErr || "Permission denied" };
+
   const column = await prisma.column.create({
     data: {
       title: parsed.data.title,
@@ -47,6 +51,12 @@ export async function createColumn(formData: FormData) {
 export async function updateColumn(columnId: string, title: string) {
   const session = await requireAuth();
   const user = session.user as SessionUser;
+
+  const col = await prisma.column.findUnique({ where: { id: columnId }, select: { boardId: true } });
+  if (!col) return { error: "Column not found" };
+
+  const { allowed, error: permErr } = await requireBoardPermission(col.boardId, user.id, user.role, "canEditColumn");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   const column = await prisma.column.update({
     where: { id: columnId },
@@ -69,6 +79,10 @@ export async function deleteColumn(columnId: string) {
   });
 
   if (!column) return { error: "Column not found" };
+
+  const { allowed, error: permErr } = await requireBoardPermission(column.boardId, user.id, user.role, "canDeleteColumn");
+  if (!allowed) return { error: permErr || "Permission denied" };
+
   if (column._count.cards > 0) {
     return { error: "Cannot delete column with cards. Move or delete cards first." };
   }
@@ -81,7 +95,11 @@ export async function deleteColumn(columnId: string) {
 }
 
 export async function reorderColumns(boardId: string, updates: { id: string; order: string }[]) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canMoveCard");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   await prisma.$transaction(
     updates.map((u) =>

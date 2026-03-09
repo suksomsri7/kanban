@@ -149,6 +149,72 @@ export async function getUserBoardPermissions(boardId: string): Promise<UserBoar
   };
 }
 
+export async function requireBoardPermission(
+  boardId: string,
+  userId: string,
+  userRole: string,
+  ...requiredPerms: (keyof Omit<UserBoardPermissions, "hasAccess" | "isFullAccess" | "allowedColumnIds">)[]
+): Promise<{ allowed: boolean; permissions: UserBoardPermissions; error?: string }> {
+  if (userRole === "SUPER_ADMIN" || userRole === "ADMIN") {
+    return { allowed: true, permissions: FULL_ACCESS };
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { customRoleId: true },
+  });
+
+  if (!dbUser?.customRoleId) {
+    const perms = userRole === "USER" ? FULL_ACCESS : { ...NO_ACCESS, hasAccess: true, canView: true };
+    return { allowed: true, permissions: perms };
+  }
+
+  const access = await prisma.customRoleBoardAccess.findUnique({
+    where: { customRoleId_boardId: { customRoleId: dbUser.customRoleId, boardId } },
+  });
+
+  if (!access) return { allowed: false, permissions: NO_ACCESS, error: "No access to this board" };
+
+  const colIds = typeof access.allowedColumnIds === "string"
+    ? JSON.parse(access.allowedColumnIds)
+    : access.allowedColumnIds;
+
+  const perms: UserBoardPermissions = {
+    hasAccess: true,
+    isFullAccess: false,
+    canView: access.canView,
+    canDuplicateBoard: access.canDuplicateBoard,
+    canEditBoardDescription: access.canEditBoardDescription,
+    canCreateCard: access.canCreateCard,
+    canDeleteCard: access.canDeleteCard,
+    canMoveCard: access.canMoveCard,
+    canEditCardTitle: access.canEditCardTitle,
+    canEditCardDescription: access.canEditCardDescription,
+    canEditCardPriority: access.canEditCardPriority,
+    canEditCardDueDate: access.canEditCardDueDate,
+    canEditCardLabels: access.canEditCardLabels,
+    canManageLabels: access.canManageLabels,
+    canEditCardAssignees: access.canEditCardAssignees,
+    canManageSubtasks: access.canManageSubtasks,
+    canUploadAttachment: access.canUploadAttachment,
+    canAddDependency: access.canAddDependency,
+    canComment: access.canComment,
+    canLockCard: access.canLockCard,
+    canAddColumn: access.canAddColumn,
+    canEditColumn: access.canEditColumn,
+    canDeleteColumn: access.canDeleteColumn,
+    allowedColumnIds: Array.isArray(colIds) ? colIds : [],
+  };
+
+  for (const perm of requiredPerms) {
+    if (!perms[perm]) {
+      return { allowed: false, permissions: perms, error: `Permission denied: ${perm}` };
+    }
+  }
+
+  return { allowed: true, permissions: perms };
+}
+
 export function canAccessColumn(permissions: UserBoardPermissions, columnId: string): boolean {
   if (permissions.isFullAccess) return true;
   if (permissions.allowedColumnIds.length === 0) return true;

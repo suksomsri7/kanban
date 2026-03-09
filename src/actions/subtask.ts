@@ -6,9 +6,15 @@ import { revalidatePath } from "next/cache";
 import { generateKeyBetween } from "fractional-indexing";
 import { logActivity } from "@/actions/activity";
 import type { SessionUser } from "@/types";
+import { requireBoardPermission } from "@/lib/permissions";
 
 export async function createSubtask(cardId: string, title: string, boardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canManageSubtasks");
+  if (!allowed) return { error: permErr || "Permission denied" };
+
   if (!title.trim()) return { error: "Title is required" };
 
   const lastSubtask = await prisma.subtask.findFirst({
@@ -30,6 +36,9 @@ export async function createSubtask(cardId: string, title: string, boardId: stri
 export async function toggleSubtask(subtaskId: string, boardId: string) {
   const session = await requireAuth();
   const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canManageSubtasks");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   const subtask = await prisma.subtask.findUnique({
     where: { id: subtaskId },
@@ -56,7 +65,12 @@ export async function toggleSubtask(subtaskId: string, boardId: string) {
 }
 
 export async function updateSubtaskTitle(subtaskId: string, title: string, boardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canManageSubtasks");
+  if (!allowed) return { error: permErr || "Permission denied" };
+
   if (!title.trim()) return { error: "Title is required" };
 
   await prisma.subtask.update({
@@ -69,7 +83,11 @@ export async function updateSubtaskTitle(subtaskId: string, title: string, board
 }
 
 export async function deleteSubtask(subtaskId: string, boardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canManageSubtasks");
+  if (!allowed) return { error: permErr || "Permission denied" };
 
   await prisma.subtask.delete({ where: { id: subtaskId } });
 
