@@ -23,13 +23,22 @@ interface UserData {
   role: Role;
   isActive: boolean;
   createdAt: Date;
+  customRoleId: string | null;
+  customRole: { id: string; name: string; color: string | null } | null;
+}
+
+interface CustomRoleOption {
+  id: string;
+  name: string;
+  color: string | null;
 }
 
 interface UserManagementProps {
   initialUsers: UserData[];
+  customRoles: CustomRoleOption[];
 }
 
-export default function UserManagement({ initialUsers }: UserManagementProps) {
+export default function UserManagement({ initialUsers, customRoles }: UserManagementProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
@@ -165,14 +174,17 @@ export default function UserManagement({ initialUsers }: UserManagementProps) {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
-        <table className="w-full min-w-[600px]">
+        <table className="w-full min-w-[700px]">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 User
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
+                System Role
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Custom Role
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
@@ -200,6 +212,18 @@ export default function UserManagement({ initialUsers }: UserManagementProps) {
                   <Badge variant={roleBadgeVariant(u.role)}>
                     {u.role.replace("_", " ")}
                   </Badge>
+                </td>
+                <td className="px-6 py-4">
+                  {u.customRole ? (
+                    <span
+                      className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full text-white"
+                      style={{ backgroundColor: u.customRole.color || "#6b7280" }}
+                    >
+                      {u.customRole.name}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400">-</span>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <Badge variant={u.isActive ? "success" : "default"}>
@@ -284,7 +308,7 @@ export default function UserManagement({ initialUsers }: UserManagementProps) {
           />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Role
+              System Role
             </label>
             <select
               name="role"
@@ -296,6 +320,24 @@ export default function UserManagement({ initialUsers }: UserManagementProps) {
               <option value="GUEST">Guest</option>
             </select>
           </div>
+          {customRoles.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Custom Role
+                <span className="text-xs text-gray-400 ml-1">(permissions)</span>
+              </label>
+              <select
+                name="customRoleId"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                defaultValue=""
+              >
+                <option value="">No custom role</option>
+                {customRoles.map((cr) => (
+                  <option key={cr.id} value={cr.id}>{cr.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button
               type="button"
@@ -328,7 +370,7 @@ export default function UserManagement({ initialUsers }: UserManagementProps) {
             />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Role
+                System Role
               </label>
               <select
                 name="role"
@@ -339,6 +381,22 @@ export default function UserManagement({ initialUsers }: UserManagementProps) {
                 <option value="ADMIN">Admin</option>
                 <option value="USER">User</option>
                 <option value="GUEST">Guest</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Custom Role
+                <span className="text-xs text-gray-400 ml-1">(permissions)</span>
+              </label>
+              <select
+                name="customRoleId"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                defaultValue={selectedUser.customRoleId || ""}
+              >
+                <option value="">No custom role</option>
+                {customRoles.map((cr) => (
+                  <option key={cr.id} value={cr.id}>{cr.name}</option>
+                ))}
               </select>
             </div>
             <div>

@@ -19,6 +19,7 @@ const CreateUserSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   displayName: z.string().min(1, "Display name is required").max(100),
   role: RoleEnum,
+  customRoleId: z.string().optional(),
 });
 
 const UpdateUserSchema = z.object({
@@ -26,6 +27,7 @@ const UpdateUserSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
   role: RoleEnum.optional(),
   isActive: z.boolean().optional(),
+  customRoleId: z.string().optional(),
 });
 
 export async function getUsers() {
@@ -52,6 +54,7 @@ export async function createUser(formData: FormData) {
     password: formData.get("password") as string,
     displayName: formData.get("displayName") as string,
     role: formData.get("role") as Role,
+    customRoleId: (formData.get("customRoleId") as string) || undefined,
   };
 
   const parsed = CreateUserSchema.safeParse(raw);
@@ -75,6 +78,7 @@ export async function createUser(formData: FormData) {
       passwordHash,
       displayName: parsed.data.displayName,
       role: parsed.data.role,
+      customRoleId: parsed.data.customRoleId || null,
     },
   });
 
@@ -85,6 +89,8 @@ export async function createUser(formData: FormData) {
 export async function updateUser(formData: FormData) {
   await requireSuperAdmin();
 
+  const customRoleIdValue = formData.get("customRoleId") as string | null;
+
   const raw = {
     id: formData.get("id") as string,
     displayName: (formData.get("displayName") as string) || undefined,
@@ -92,6 +98,7 @@ export async function updateUser(formData: FormData) {
     isActive: formData.has("isActive")
       ? formData.get("isActive") === "true"
       : undefined,
+    customRoleId: customRoleIdValue || undefined,
   };
 
   const parsed = UpdateUserSchema.safeParse(raw);
@@ -99,11 +106,14 @@ export async function updateUser(formData: FormData) {
     return { error: parsed.error.issues[0].message };
   }
 
-  const { id, ...data } = parsed.data;
+  const { id, customRoleId, ...data } = parsed.data;
 
   await prisma.user.update({
     where: { id },
-    data,
+    data: {
+      ...data,
+      customRoleId: customRoleId || null,
+    },
   });
 
   revalidatePath("/admin/users");

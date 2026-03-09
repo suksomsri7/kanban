@@ -5,17 +5,25 @@ import UserManagement from "@/components/admin/UserManagement";
 export default async function AdminUsersPage() {
   await requireSuperAdmin();
 
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      username: true,
-      displayName: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const [users, customRoles] = await Promise.all([
+    prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        customRoleId: true,
+        customRole: { select: { id: true, name: true, color: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.customRole.findMany({
+      select: { id: true, name: true, color: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   return (
     <div>
@@ -25,7 +33,7 @@ export default async function AdminUsersPage() {
           Create and manage user accounts
         </p>
       </div>
-      <UserManagement initialUsers={users} />
+      <UserManagement initialUsers={users} customRoles={customRoles} />
     </div>
   );
 }
