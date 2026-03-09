@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
+import { logActivity } from "@/actions/activity";
 import { triggerBoardEvent } from "@/lib/pusher-server";
+import type { SessionUser } from "@/types";
 
 const CreateColumnSchema = z.object({
   title: z.string().min(1, "Title is required").max(50),
@@ -13,7 +15,8 @@ const CreateColumnSchema = z.object({
 });
 
 export async function createColumn(formData: FormData) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
 
   const raw = {
     title: formData.get("title") as string,
@@ -34,29 +37,35 @@ export async function createColumn(formData: FormData) {
     },
   });
 
+  await logActivity("COLUMN_CREATED", parsed.data.boardId, user.id, { title: parsed.data.title });
+
   revalidatePath(`/board/${parsed.data.boardId}`);
   triggerBoardEvent(parsed.data.boardId, "column-created", { columnId: column.id });
   return { success: true, columnId: column.id };
 }
 
 export async function updateColumn(columnId: string, title: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
 
   const column = await prisma.column.update({
     where: { id: columnId },
     data: { title },
   });
 
+  await logActivity("COLUMN_UPDATED", column.boardId, user.id, { title });
+
   revalidatePath(`/board/${column.boardId}`);
   return { success: true };
 }
 
 export async function deleteColumn(columnId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
 
   const column = await prisma.column.findUnique({
     where: { id: columnId },
-    select: { boardId: true, _count: { select: { cards: true } } },
+    select: { boardId: true, title: true, _count: { select: { cards: true } } },
   });
 
   if (!column) return { error: "Column not found" };
@@ -64,6 +73,7 @@ export async function deleteColumn(columnId: string) {
     return { error: "Cannot delete column with cards. Move or delete cards first." };
   }
 
+  await logActivity("COLUMN_DELETED", column.boardId, user.id, { title: column.title });
   await prisma.column.delete({ where: { id: columnId } });
 
   revalidatePath(`/board/${column.boardId}`);

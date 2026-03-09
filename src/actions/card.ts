@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
 import type { SessionUser } from "@/types";
 import { createNotification, notifyUsers } from "@/actions/notification";
+import { logActivity } from "@/actions/activity";
 import { triggerBoardEvent } from "@/lib/pusher-server";
 
 const CreateCardSchema = z.object({
@@ -59,7 +60,8 @@ export async function getCardById(cardId: string) {
 }
 
 export async function createCard(formData: FormData) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
 
   const raw = {
     title: formData.get("title") as string,
@@ -87,13 +89,16 @@ export async function createCard(formData: FormData) {
     },
   });
 
+  await logActivity("CARD_CREATED", column.boardId, user.id, { title: parsed.data.title }, card.id);
+
   revalidatePath(`/board/${column.boardId}`);
   triggerBoardEvent(column.boardId, "card-created", { cardId: card.id });
   return { success: true, cardId: card.id };
 }
 
 export async function updateCard(formData: FormData) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
 
   const raw = {
     id: formData.get("id") as string,
@@ -125,6 +130,8 @@ export async function updateCard(formData: FormData) {
     include: { column: { select: { boardId: true } } },
   });
 
+  await logActivity("CARD_UPDATED", card.column.boardId, user.id, { ...data }, card.id);
+
   revalidatePath(`/board/${card.column.boardId}`);
   return { success: true };
 }
@@ -147,7 +154,8 @@ export async function moveCard(
 }
 
 export async function reorderCards(boardId: string, updates: { id: string; columnId: string; order: string }[]) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
 
   await prisma.$transaction(
     updates.map((u) =>
@@ -158,21 +166,27 @@ export async function reorderCards(boardId: string, updates: { id: string; colum
     )
   );
 
+  for (const u2 of updates) {
+    await logActivity("CARD_MOVED", boardId, user.id, { columnId: u2.columnId }, u2.id);
+  }
+
   revalidatePath(`/board/${boardId}`);
   triggerBoardEvent(boardId, "card-moved", { updates });
   return { success: true };
 }
 
 export async function deleteCard(cardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
 
   const card = await prisma.card.findUnique({
     where: { id: cardId },
-    select: { column: { select: { boardId: true } } },
+    select: { title: true, column: { select: { boardId: true } } },
   });
 
   if (!card) return { error: "Card not found" };
 
+  await logActivity("CARD_DELETED", card.column.boardId, user.id, { title: card.title });
   await prisma.card.delete({ where: { id: cardId } });
 
   revalidatePath(`/board/${card.column.boardId}`);
@@ -180,13 +194,16 @@ export async function deleteCard(cardId: string) {
 }
 
 export async function archiveCard(cardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
 
   const card = await prisma.card.update({
     where: { id: cardId },
     data: { isArchived: true },
     include: { column: { select: { boardId: true } } },
   });
+
+  await logActivity("CARD_ARCHIVED", card.column.boardId, user.id, { title: card.title }, card.id);
 
   revalidatePath(`/board/${card.column.boardId}`);
   return { success: true };
@@ -219,8 +236,10 @@ export async function toggleCardAssignee(cardId: string, userId: string, boardId
 
   if (existing) {
     await prisma.cardAssignee.delete({ where: { id: existing.id } });
+    await logActivity("CARD_UNASSIGNED", boardId, currentUser.id, { userId }, cardId);
   } else {
     await prisma.cardAssignee.create({ data: { cardId, userId } });
+    await logActivity("CARD_ASSIGNED", boardId, currentUser.id, { userId }, cardId);
 
     if (userId !== currentUser.id) {
       const card = await prisma.card.findUnique({ where: { id: cardId }, select: { title: true } });
@@ -283,15 +302,24 @@ export async function addComment(cardId: string, content: string, boardId: strin
     }
   }
 
+  await logActivity("COMMENT_ADDED", boardId, user.id, { preview: content.trim().slice(0, 80) }, cardId);
+
   revalidatePath(`/board/${boardId}`);
   triggerBoardEvent(boardId, "comment-added", { cardId });
   return { success: true };
 }
 
 export async function deleteComment(commentId: string, boardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { cardId: true },
+  });
 
   await prisma.comment.delete({ where: { id: commentId } });
+  await logActivity("COMMENT_DELETED", boardId, user.id, {}, comment?.cardId ?? undefined);
 
   revalidatePath(`/board/${boardId}`);
   return { success: true };

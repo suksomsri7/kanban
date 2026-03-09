@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
+import { logActivity } from "@/actions/activity";
 import type { SessionUser } from "@/types";
 
 export async function createAttachmentRecord(
@@ -27,14 +28,23 @@ export async function createAttachmentRecord(
     },
   });
 
+  await logActivity("ATTACHMENT_ADDED", boardId, user.id, { fileName }, cardId);
+
   revalidatePath(`/board/${boardId}`);
   return { success: true };
 }
 
 export async function deleteAttachment(attachmentId: string, boardId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const att = await prisma.attachment.findUnique({
+    where: { id: attachmentId },
+    select: { fileName: true, cardId: true },
+  });
 
   await prisma.attachment.delete({ where: { id: attachmentId } });
+  await logActivity("ATTACHMENT_DELETED", boardId, user.id, { fileName: att?.fileName }, att?.cardId ?? undefined);
 
   revalidatePath(`/board/${boardId}`);
   return { success: true };

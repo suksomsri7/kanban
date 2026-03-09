@@ -18,7 +18,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { generateKeyBetween } from "fractional-indexing";
-import { ArrowLeft, Activity, Pencil, Check, X } from "lucide-react";
+import { ArrowLeft, Activity, Pencil, Check, X, FileText } from "lucide-react";
 import Link from "next/link";
 import Column from "@/components/column/Column";
 import CardThumb from "@/components/card/CardThumb";
@@ -62,6 +62,14 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
   const [editTitle, setEditTitle] = useState(board.title);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
+  const [editDesc, setEditDesc] = useState(board.description || "");
+  const [showDesc, setShowDesc] = useState(false);
+
+  const canEditBoardDesc = permissions
+    ? permissions.isFullAccess || permissions.canEditBoardDescription
+    : currentUser.role !== "GUEST";
+
   const isEditor = permissions
     ? permissions.isFullAccess || permissions.canCreateCard || permissions.canMoveCard ||
       permissions.canEditCardTitle || permissions.canEditCardDescription
@@ -99,6 +107,18 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
     formData.set("title", trimmed);
     await updateBoard(formData);
     setIsEditingTitle(false);
+  }
+
+  async function handleSaveDescription() {
+    if (editDesc === (board.description || "")) {
+      setIsEditingDesc(false);
+      return;
+    }
+    const formData = new FormData();
+    formData.set("id", board.id);
+    formData.set("description", editDesc);
+    await updateBoard(formData);
+    setIsEditingDesc(false);
   }
 
   const sensors = useSensors(
@@ -294,8 +314,17 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
                 )}
               </div>
             )}
-            {board.description && !isEditingTitle && (
-              <p className="text-xs text-gray-500 truncate hidden sm:block">{board.description}</p>
+            {!isEditingTitle && (
+              <button
+                onClick={() => setShowDesc(!showDesc)}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 mt-0.5"
+                title={board.description || "No description"}
+              >
+                <FileText size={11} />
+                <span className="truncate max-w-[200px] hidden sm:inline">
+                  {board.description || "No description"}
+                </span>
+              </button>
             )}
           </div>
         </div>
@@ -338,6 +367,63 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
           </button>
         </div>
       </div>
+
+      {/* Board Description Panel */}
+      {showDesc && (
+        <div className="px-3 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 shrink-0">
+          <div className="flex items-start justify-between gap-3 max-w-2xl">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1.5">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Description</label>
+                {canEditBoardDesc && !isEditingDesc && (
+                  <button
+                    onClick={() => { setEditDesc(board.description || ""); setIsEditingDesc(true); }}
+                    className="p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600"
+                  >
+                    <Pencil size={11} />
+                  </button>
+                )}
+              </div>
+              {isEditingDesc ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={editDesc}
+                    onChange={(e) => setEditDesc(e.target.value)}
+                    rows={3}
+                    autoFocus
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none"
+                    placeholder="Add a board description..."
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveDescription}
+                      className="px-3 py-1.5 bg-black text-white text-xs rounded-lg hover:bg-gray-800"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => { setEditDesc(board.description || ""); setIsEditingDesc(false); }}
+                      className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                  {board.description || "No description yet."}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => { setShowDesc(false); setIsEditingDesc(false); }}
+              className="p-1 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 shrink-0"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Board Content */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-6">

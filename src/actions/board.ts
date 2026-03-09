@@ -5,6 +5,7 @@ import { requireAuth, requireAdmin } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
 import type { SessionUser } from "@/types";
+import { logActivity } from "@/actions/activity";
 
 const CreateBoardSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -175,12 +176,15 @@ export async function createBoard(formData: FormData) {
     },
   });
 
+  await logActivity("BOARD_CREATED", board.id, user.id, { title: parsed.data.title });
+
   revalidatePath("/boards");
   return { success: true, boardId: board.id };
 }
 
 export async function updateBoard(formData: FormData) {
   const session = await requireAuth();
+  const user = session.user as SessionUser;
 
   const raw = {
     id: formData.get("id") as string,
@@ -197,6 +201,7 @@ export async function updateBoard(formData: FormData) {
   const { id, ...data } = parsed.data;
 
   await prisma.board.update({ where: { id }, data });
+  await logActivity("BOARD_UPDATED", id, user.id, { ...data });
 
   revalidatePath("/boards");
   revalidatePath(`/board/${id}`);
@@ -216,7 +221,8 @@ export async function deleteBoard(boardId: string) {
 }
 
 export async function addBoardMember(boardId: string, userId: string, role: "EDITOR" | "VIEWER" = "EDITOR") {
-  await requireAuth();
+  const session = await requireAuth();
+  const currentUser = session.user as SessionUser;
 
   await prisma.boardMember.upsert({
     where: { boardId_userId: { boardId, userId } },
@@ -224,16 +230,21 @@ export async function addBoardMember(boardId: string, userId: string, role: "EDI
     update: { role },
   });
 
+  await logActivity("MEMBER_ADDED", boardId, currentUser.id, { userId, role });
+
   revalidatePath(`/board/${boardId}`);
   return { success: true };
 }
 
 export async function removeBoardMember(boardId: string, userId: string) {
-  await requireAuth();
+  const session = await requireAuth();
+  const currentUser = session.user as SessionUser;
 
   await prisma.boardMember.deleteMany({
     where: { boardId, userId },
   });
+
+  await logActivity("MEMBER_REMOVED", boardId, currentUser.id, { userId });
 
   revalidatePath(`/board/${boardId}`);
   return { success: true };

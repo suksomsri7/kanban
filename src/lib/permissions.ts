@@ -7,6 +7,7 @@ export interface UserBoardPermissions {
   isFullAccess: boolean;
   canView: boolean;
   canDuplicateBoard: boolean;
+  canEditBoardDescription: boolean;
   canCreateCard: boolean;
   canDeleteCard: boolean;
   canMoveCard: boolean;
@@ -36,6 +37,7 @@ const FULL_ACCESS: UserBoardPermissions = {
   isFullAccess: true,
   canView: true,
   canDuplicateBoard: true,
+  canEditBoardDescription: true,
   canCreateCard: true,
   canDeleteCard: true,
   canMoveCard: true,
@@ -62,6 +64,7 @@ const NO_ACCESS: UserBoardPermissions = {
   isFullAccess: false,
   canView: false,
   canDuplicateBoard: false,
+  canEditBoardDescription: false,
   canCreateCard: false,
   canDeleteCard: false,
   canMoveCard: false,
@@ -123,6 +126,7 @@ export async function getUserBoardPermissions(boardId: string): Promise<UserBoar
     isFullAccess: false,
     canView: access.canView,
     canDuplicateBoard: access.canDuplicateBoard,
+    canEditBoardDescription: access.canEditBoardDescription,
     canCreateCard: access.canCreateCard,
     canDeleteCard: access.canDeleteCard,
     canMoveCard: access.canMoveCard,

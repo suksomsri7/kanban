@@ -360,9 +360,10 @@ model CustomRoleBoardAccess {
   customRoleId  String
   boardId       String
 
-  canView           Boolean @default(true)
-  canDuplicateBoard Boolean @default(false)
-  canCreateCard     Boolean @default(false)
+  canView                Boolean @default(true)
+  canDuplicateBoard      Boolean @default(false)
+  canEditBoardDescription Boolean @default(false)
+  canCreateCard          Boolean @default(false)
   canDeleteCard     Boolean @default(false)
   canMoveCard       Boolean @default(false)
 

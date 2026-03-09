@@ -18,6 +18,7 @@ const BoardAccessSchema = z.object({
   boardId: z.string(),
   canView: z.boolean().default(true),
   canDuplicateBoard: z.boolean().default(false),
+  canEditBoardDescription: z.boolean().default(false),
   canCreateCard: z.boolean().default(false),
   canDeleteCard: z.boolean().default(false),
   canMoveCard: z.boolean().default(false),
