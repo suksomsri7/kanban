@@ -166,6 +166,11 @@ export async function requireBoardPermission(
 
   if (!dbUser?.customRoleId) {
     const perms = userRole === "USER" ? FULL_ACCESS : { ...NO_ACCESS, hasAccess: true, canView: true };
+    for (const perm of requiredPerms) {
+      if (!perms[perm]) {
+        return { allowed: false, permissions: perms, error: `Permission denied: ${perm}` };
+      }
+    }
     return { allowed: true, permissions: perms };
   }
 

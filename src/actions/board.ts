@@ -80,6 +80,39 @@ export async function getBoards() {
 
 export async function getBoardById(boardId: string) {
   const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  if (user.role !== "SUPER_ADMIN" && user.role !== "ADMIN") {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { customRoleId: true },
+    });
+
+    const board = await prisma.board.findUnique({
+      where: { id: boardId },
+      select: {
+        ownerId: true,
+        members: { select: { userId: true } },
+        brand: { select: { members: { select: { userId: true } } } },
+      },
+    });
+
+    if (!board) return null;
+
+    const isOwner = board.ownerId === user.id;
+    const isMember = board.members.some((m) => m.userId === user.id);
+    const isBrandMember = board.brand?.members.some((m) => m.userId === user.id);
+    const hasCustomRoleAccess = dbUser?.customRoleId
+      ? !!(await prisma.customRoleBoardAccess.findUnique({
+          where: { customRoleId_boardId: { customRoleId: dbUser.customRoleId, boardId } },
+          select: { canView: true },
+        }))?.canView
+      : false;
+
+    if (!isOwner && !isMember && !isBrandMember && !hasCustomRoleAccess) {
+      return null;
+    }
+  }
 
   return prisma.board.findUnique({
     where: { id: boardId },
@@ -213,8 +246,8 @@ export async function updateBoard(formData: FormData) {
   }
 
   if (data.description !== undefined) {
-    const { allowed, permissions: perms } = await requireBoardPermission(id, user.id, user.role, "canEditBoardDescription");
-    if (!allowed && !perms?.isFullAccess) return { error: "Permission denied: canEditBoardDescription" };
+    const { allowed } = await requireBoardPermission(id, user.id, user.role, "canEditBoardDescription");
+    if (!allowed) return { error: "Permission denied: canEditBoardDescription" };
   }
 
   const updatedBoard = await prisma.board.update({ where: { id }, data });
@@ -242,7 +275,7 @@ export async function deleteBoard(boardId: string) {
 }
 
 export async function addBoardMember(boardId: string, userId: string, role: "EDITOR" | "VIEWER" = "EDITOR") {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   const currentUser = session.user as SessionUser;
 
   await prisma.boardMember.upsert({
@@ -258,7 +291,7 @@ export async function addBoardMember(boardId: string, userId: string, role: "EDI
 }
 
 export async function removeBoardMember(boardId: string, userId: string) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   const currentUser = session.user as SessionUser;
 
   await prisma.boardMember.deleteMany({

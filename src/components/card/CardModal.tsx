@@ -193,7 +193,7 @@ export default function CardModal({
   async function handleStageChange(targetColumnId: string) {
     if (!card || targetColumnId === card.columnId) return;
     startTransition(async () => {
-      const order = generateKeyBetween(null, null);
+      const order = generateKeyBetween(null, null) + Date.now().toString(36);
       await moveCard(cardId, targetColumnId, order, boardId);
       await loadCard();
       router.refresh();
