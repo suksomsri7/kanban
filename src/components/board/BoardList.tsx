@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Kanban, Users, Trash2 } from "lucide-react";
+import { Plus, Kanban, Users, Trash2, Copy } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import Input from "@/components/ui/Input";
 import Avatar from "@/components/ui/Avatar";
-import { createBoard, deleteBoard } from "@/actions/board";
+import { createBoard, deleteBoard, duplicateBoard } from "@/actions/board";
 import { useRouter } from "next/navigation";
 
 interface BoardData {
@@ -60,6 +60,18 @@ export default function BoardList({ boards, templates, isAdmin }: BoardListProps
     router.refresh();
   }
 
+  async function handleDuplicate(boardId: string, title: string) {
+    if (!confirm(`Duplicate board "${title}" with all columns, labels, and cards?`)) return;
+    setLoading(true);
+    const result = await duplicateBoard(boardId);
+    if (result.error) {
+      alert(result.error);
+    } else {
+      router.refresh();
+    }
+    setLoading(false);
+  }
+
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -107,7 +119,13 @@ export default function BoardList({ boards, templates, isAdmin }: BoardListProps
               </div>
             </Link>
             {isAdmin && (
-              <div className="px-5 pb-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="px-5 pb-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
+                <button
+                  onClick={() => handleDuplicate(board.id, board.title)}
+                  className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1"
+                >
+                  <Copy size={12} /> Duplicate
+                </button>
                 <button
                   onClick={() => handleDelete(board.id, board.title)}
                   className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"

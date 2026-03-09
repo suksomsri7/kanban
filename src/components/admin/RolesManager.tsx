@@ -41,6 +41,7 @@ type BoardAccess = {
   customRoleId: string;
   boardId: string;
   canView: boolean;
+  canDuplicateBoard: boolean;
   canCreateCard: boolean;
   canDeleteCard: boolean;
   canMoveCard: boolean;
@@ -100,6 +101,7 @@ const PERMISSION_GROUPS = [
     label: "Board",
     perms: [
       { key: "canView", label: "View Board" },
+      { key: "canDuplicateBoard", label: "Duplicate Board" },
     ],
   },
   {
@@ -235,6 +237,7 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
       customRoleId: boardModalRoleId,
       boardId: boardModalBoardId,
       canView: !!boardPerms.canView,
+      canDuplicateBoard: !!boardPerms.canDuplicateBoard,
       canCreateCard: !!boardPerms.canCreateCard,
       canDeleteCard: !!boardPerms.canDeleteCard,
       canMoveCard: !!boardPerms.canMoveCard,

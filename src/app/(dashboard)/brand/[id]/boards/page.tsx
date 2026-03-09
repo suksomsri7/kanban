@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { getBrandById } from "@/actions/brand";
 import { getBoardTemplates } from "@/actions/board";
 import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import BrandDetail from "@/components/brand/BrandDetail";
 import type { SessionUser } from "@/types";
 
@@ -20,5 +21,34 @@ export default async function BrandBoardsPage({ params }: Props) {
   const templates = await getBoardTemplates();
   const isSuperAdmin = user.role === "SUPER_ADMIN";
 
-  return <BrandDetail brand={brand} templates={templates} isSuperAdmin={isSuperAdmin} currentUser={user} />;
+  let duplicatableBoardIds: string[] = [];
+  if (isSuperAdmin || user.role === "ADMIN") {
+    duplicatableBoardIds = brand.boards.map((b) => b.id);
+  } else {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { customRoleId: true },
+    });
+    if (dbUser?.customRoleId) {
+      const accesses = await prisma.customRoleBoardAccess.findMany({
+        where: {
+          customRoleId: dbUser.customRoleId,
+          boardId: { in: brand.boards.map((b) => b.id) },
+          canDuplicateBoard: true,
+        },
+        select: { boardId: true },
+      });
+      duplicatableBoardIds = accesses.map((a) => a.boardId);
+    }
+  }
+
+  return (
+    <BrandDetail
+      brand={brand}
+      templates={templates}
+      isSuperAdmin={isSuperAdmin}
+      currentUser={user}
+      duplicatableBoardIds={duplicatableBoardIds}
+    />
+  );
 }

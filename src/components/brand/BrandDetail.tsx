@@ -20,6 +20,7 @@ interface BrandDetailProps {
   templates: TemplateData[];
   isSuperAdmin: boolean;
   currentUser: SessionUser;
+  duplicatableBoardIds?: string[];
 }
 
 export default function BrandDetail({
@@ -27,6 +28,7 @@ export default function BrandDetail({
   templates,
   isSuperAdmin,
   currentUser,
+  duplicatableBoardIds = [],
 }: BrandDetailProps) {
   const router = useRouter();
   const [showCreateBoard, setShowCreateBoard] = useState(false);
@@ -170,20 +172,24 @@ export default function BrandDetail({
                 <span className="text-xs text-gray-400">{board._count.columns} columns</span>
               </div>
             </Link>
-            {canEdit && (
+            {(canEdit || duplicatableBoardIds.includes(board.id)) && (
               <div className="px-5 pb-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
-                <button
-                  onClick={() => handleDuplicateBoard(board.id, board.title)}
-                  className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1"
-                >
-                  <Copy size={12} /> Duplicate
-                </button>
-                <button
-                  onClick={() => handleDeleteBoard(board.id, board.title)}
-                  className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
-                >
-                  <Trash2 size={12} /> Delete
-                </button>
+                {duplicatableBoardIds.includes(board.id) && (
+                  <button
+                    onClick={() => handleDuplicateBoard(board.id, board.title)}
+                    className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <Copy size={12} /> Duplicate
+                  </button>
+                )}
+                {canEdit && (
+                  <button
+                    onClick={() => handleDeleteBoard(board.id, board.title)}
+                    className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
+                  >
+                    <Trash2 size={12} /> Delete
+                  </button>
+                )}
               </div>
             )}
           </div>
