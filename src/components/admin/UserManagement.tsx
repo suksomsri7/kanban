@@ -320,12 +320,12 @@ export default function UserManagement({ initialUsers, customRoles }: UserManage
               <option value="GUEST">Guest</option>
             </select>
           </div>
-          {customRoles.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Custom Role
-                <span className="text-xs text-gray-400 ml-1">(permissions)</span>
-              </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Custom Role
+              <span className="text-xs text-gray-400 ml-1">(permissions)</span>
+            </label>
+            {customRoles.length > 0 ? (
               <select
                 name="customRoleId"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
@@ -336,8 +336,12 @@ export default function UserManagement({ initialUsers, customRoles }: UserManage
                   <option key={cr.id} value={cr.id}>{cr.name}</option>
                 ))}
               </select>
-            </div>
-          )}
+            ) : (
+              <p className="text-sm text-gray-400 py-2 px-3 border border-dashed border-gray-200 rounded-lg">
+                No custom roles available. Go to <strong className="text-gray-600">Roles</strong> menu to create one.
+              </p>
+            )}
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button
               type="button"
