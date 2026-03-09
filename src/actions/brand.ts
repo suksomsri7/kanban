@@ -106,22 +106,32 @@ export async function getBrandById(brandId: string) {
   if (!brand) return null;
 
   if (user.role !== "SUPER_ADMIN" && user.role !== "ADMIN") {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { customRoleId: true },
+    });
+
     const isMember = brand.members.some((m) => m.userId === user.id);
-    if (!isMember) {
-      const dbUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { customRoleId: true },
-      });
-      const hasCustomRoleAccess = dbUser?.customRoleId
-        ? await prisma.customRoleBoardAccess.findFirst({
-            where: {
-              customRoleId: dbUser.customRoleId,
-              canView: true,
-              board: { brandId },
-            },
-          })
-        : null;
-      if (!hasCustomRoleAccess) return null;
+
+    if (dbUser?.customRoleId) {
+      const accessibleBoardIds = (
+        await prisma.customRoleBoardAccess.findMany({
+          where: {
+            customRoleId: dbUser.customRoleId,
+            canView: true,
+            board: { brandId },
+          },
+          select: { boardId: true },
+        })
+      ).map((a) => a.boardId);
+
+      if (!isMember && accessibleBoardIds.length === 0) return null;
+
+      brand.boards = brand.boards.filter((b) =>
+        accessibleBoardIds.includes(b.id)
+      );
+    } else if (!isMember) {
+      return null;
     }
   }
 
