@@ -21,6 +21,8 @@ import {
   removeUserFromBrand,
   assignUserToBoard,
   removeUserFromBoard,
+  updateUserRole,
+  toggleUserActive,
 } from "@/actions/role";
 
 type UserWithAccess = {
@@ -86,6 +88,20 @@ export default function RolesManager({ users, brandsWithBoards }: Props) {
     setLoading(false);
     setShowAssign(null);
     setSelectedId("");
+    router.refresh();
+  }
+
+  async function handleRoleChange(userId: string, role: string) {
+    setLoading(true);
+    await updateUserRole(userId, role as "SUPER_ADMIN" | "ADMIN" | "USER" | "GUEST");
+    setLoading(false);
+    router.refresh();
+  }
+
+  async function handleToggleActive(userId: string, isActive: boolean) {
+    setLoading(true);
+    await toggleUserActive(userId, isActive);
+    setLoading(false);
     router.refresh();
   }
 
@@ -178,6 +194,47 @@ export default function RolesManager({ users, brandsWithBoards }: Props) {
               {isExpanded && (
                 <div className="px-5 pb-4 bg-gray-50/50">
                   <div className="pl-8">
+                    <div className="mb-4 flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          System Role
+                        </label>
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                          disabled={user.role === "SUPER_ADMIN"}
+                          className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="SUPER_ADMIN">Super Admin</option>
+                          <option value="ADMIN">Admin</option>
+                          <option value="USER">User</option>
+                          <option value="GUEST">Guest</option>
+                        </select>
+                      </div>
+                      {user.role !== "SUPER_ADMIN" && (
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                            Status
+                          </label>
+                          <button
+                            onClick={() => handleToggleActive(user.id, !user.isActive)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              user.isActive ? "bg-green-500" : "bg-gray-300"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                                user.isActive ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                          <span className={`text-xs font-medium ${user.isActive ? "text-green-600" : "text-gray-400"}`}>
+                            {user.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                     {user.brandMembers.length > 0 && (
                       <div className="mb-3">
                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
+import type { Role } from "@prisma/client";
 
 export async function getUsersWithAccess() {
   await requireSuperAdmin();
@@ -109,5 +110,49 @@ export async function removeUserFromBoard(userId: string, boardId: string) {
   await prisma.boardMember.deleteMany({ where: { boardId, userId } });
 
   revalidatePath("/admin/roles");
+  return { success: true };
+}
+
+export async function updateUserRole(
+  userId: string,
+  role: Role
+): Promise<{ success?: boolean; error?: string }> {
+  await requireSuperAdmin();
+
+  const validRoles: Role[] = ["SUPER_ADMIN", "ADMIN", "USER", "GUEST"];
+  if (!validRoles.includes(role)) {
+    return { error: "Invalid role" };
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return { error: "User not found" };
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { role },
+  });
+
+  revalidatePath("/admin/roles");
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+export async function toggleUserActive(
+  userId: string,
+  isActive: boolean
+): Promise<{ success?: boolean; error?: string }> {
+  await requireSuperAdmin();
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return { error: "User not found" };
+  if (user.role === "SUPER_ADMIN") return { error: "Cannot deactivate Super Admin" };
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { isActive },
+  });
+
+  revalidatePath("/admin/roles");
+  revalidatePath("/admin/users");
   return { success: true };
 }
