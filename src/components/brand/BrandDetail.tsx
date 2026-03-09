@@ -153,7 +153,10 @@ export default function BrandDetail({
           >
             <Link href={`/board/${board.id}`} className="block p-5">
               <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center">
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: board.color || "#111827" }}
+                >
                   <Kanban size={20} className="text-white" />
                 </div>
               </div>
