@@ -55,6 +55,7 @@ type BoardAccess = {
   canUploadAttachment: boolean;
   canAddDependency: boolean;
   canComment: boolean;
+  canLockCard: boolean;
   canAddColumn: boolean;
   canEditColumn: boolean;
   canDeleteColumn: boolean;
@@ -128,6 +129,12 @@ const PERMISSION_GROUPS = [
     label: "Comment",
     perms: [
       { key: "canComment", label: "Comment" },
+    ],
+  },
+  {
+    label: "Card Lock",
+    perms: [
+      { key: "canLockCard", label: "Lock/Unlock Card Fields" },
     ],
   },
   {
@@ -242,6 +249,7 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
       canUploadAttachment: !!boardPerms.canUploadAttachment,
       canAddDependency: !!boardPerms.canAddDependency,
       canComment: !!boardPerms.canComment,
+      canLockCard: !!boardPerms.canLockCard,
       canAddColumn: !!boardPerms.canAddColumn,
       canEditColumn: !!boardPerms.canEditColumn,
       canDeleteColumn: !!boardPerms.canDeleteColumn,

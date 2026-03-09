@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Kanban, Trash2, UserPlus, UserMinus, FolderKanban } from "lucide-react";
+import { ArrowLeft, Plus, Kanban, Trash2, Copy, UserPlus, UserMinus, FolderKanban } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import Input from "@/components/ui/Input";
 import Avatar from "@/components/ui/Avatar";
-import { createBoard, deleteBoard } from "@/actions/board";
+import { createBoard, deleteBoard, duplicateBoard } from "@/actions/board";
 import { addBrandMember, removeBrandMember } from "@/actions/brand";
 import { useRouter } from "next/navigation";
 import type { SessionUser } from "@/types";
@@ -58,6 +58,18 @@ export default function BrandDetail({
     if (!confirm(`Delete board "${title}"?`)) return;
     await deleteBoard(boardId);
     router.refresh();
+  }
+
+  async function handleDuplicateBoard(boardId: string, title: string) {
+    if (!confirm(`Duplicate board "${title}" with all columns, labels, and cards?`)) return;
+    setLoading(true);
+    const result = await duplicateBoard(boardId);
+    if (result.error) {
+      alert(result.error);
+    } else {
+      router.refresh();
+    }
+    setLoading(false);
   }
 
   async function handleAddMember() {
@@ -159,7 +171,13 @@ export default function BrandDetail({
               </div>
             </Link>
             {canEdit && (
-              <div className="px-5 pb-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="px-5 pb-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
+                <button
+                  onClick={() => handleDuplicateBoard(board.id, board.title)}
+                  className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1"
+                >
+                  <Copy size={12} /> Duplicate
+                </button>
                 <button
                   onClick={() => handleDeleteBoard(board.id, board.title)}
                   className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"

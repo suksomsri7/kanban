@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageSquare, Paperclip, CheckSquare, Calendar, AlertTriangle } from "lucide-react";
+import { MessageSquare, Paperclip, CheckSquare, Calendar, AlertTriangle, Lock } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import { format, isPast, isToday } from "date-fns";
 
@@ -14,6 +14,7 @@ interface CardThumbProps {
     dueDate: Date | string | null;
     assignees: { user: { id: string; displayName: string; avatar: string | null } }[];
     labels: { label: { id: string; name: string; color: string } }[];
+    lockedFields?: unknown;
     _count: { comments: number; attachments: number; subtasks: number };
   };
   onCardClick: (cardId: string) => void;
@@ -54,6 +55,14 @@ export default function CardThumb({ card, onCardClick, isDragOverlay, canDrag = 
   const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate);
   const isDueToday = dueDate && isToday(dueDate);
 
+  const lf = card.lockedFields;
+  const parsedLocked: string[] = (() => {
+    if (!lf) return [];
+    const v = typeof lf === "string" ? JSON.parse(lf) : lf;
+    return Array.isArray(v) ? v : [];
+  })();
+  const hasLocks = parsedLocked.length > 0;
+
   return (
     <div
       ref={setNodeRef}
@@ -81,7 +90,12 @@ export default function CardThumb({ card, onCardClick, isDragOverlay, canDrag = 
       )}
 
       {/* Title */}
-      <p className="text-sm text-gray-900 font-medium leading-snug">{card.title}</p>
+      <div className="flex items-start gap-1.5">
+        <p className="text-sm text-gray-900 font-medium leading-snug flex-1">{card.title}</p>
+        {hasLocks && (
+          <Lock size={12} className="text-amber-500 shrink-0 mt-0.5" />
+        )}
+      </div>
 
       {/* Meta row */}
       <div className="flex items-center justify-between mt-2">

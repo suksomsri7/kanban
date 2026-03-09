@@ -239,6 +239,102 @@ export async function removeBoardMember(boardId: string, userId: string) {
   return { success: true };
 }
 
+export async function duplicateBoard(boardId: string) {
+  const session = await requireAdmin();
+  const user = session.user as SessionUser;
+
+  const source = await prisma.board.findUnique({
+    where: { id: boardId },
+    include: {
+      columns: {
+        orderBy: { order: "asc" },
+        include: {
+          cards: {
+            where: { isArchived: false },
+            orderBy: { order: "asc" },
+            include: {
+              labels: { select: { labelId: true } },
+              subtasks: { orderBy: { order: "asc" } },
+            },
+          },
+        },
+      },
+      labels: true,
+    },
+  });
+
+  if (!source) return { error: "Board not found" };
+
+  const newBoard = await prisma.board.create({
+    data: {
+      title: `${source.title} (Copy)`,
+      description: source.description,
+      color: source.color,
+      ownerId: user.id,
+      brandId: source.brandId,
+      members: { create: { userId: user.id, role: "OWNER" } },
+    },
+  });
+
+  const labelMap = new Map<string, string>();
+  for (const label of source.labels) {
+    const newLabel = await prisma.label.create({
+      data: { name: label.name, color: label.color, boardId: newBoard.id },
+    });
+    labelMap.set(label.id, newLabel.id);
+  }
+
+  for (const col of source.columns) {
+    const newCol = await prisma.column.create({
+      data: {
+        title: col.title,
+        order: col.order,
+        color: col.color,
+        boardId: newBoard.id,
+      },
+    });
+
+    for (const card of col.cards) {
+      const newCard = await prisma.card.create({
+        data: {
+          title: card.title,
+          description: card.description,
+          order: card.order,
+          priority: card.priority,
+          dueDate: card.dueDate,
+          columnId: newCol.id,
+        },
+      });
+
+      const newLabelIds = card.labels
+        .map((cl) => labelMap.get(cl.labelId))
+        .filter(Boolean) as string[];
+      if (newLabelIds.length > 0) {
+        await prisma.cardLabel.createMany({
+          data: newLabelIds.map((labelId) => ({ cardId: newCard.id, labelId })),
+        });
+      }
+
+      if (card.subtasks.length > 0) {
+        await prisma.subtask.createMany({
+          data: card.subtasks.map((st) => ({
+            title: st.title,
+            isCompleted: false,
+            order: st.order,
+            cardId: newCard.id,
+          })),
+        });
+      }
+    }
+  }
+
+  revalidatePath("/boards");
+  if (source.brandId) {
+    revalidatePath(`/brand/${source.brandId}/boards`);
+  }
+  return { success: true, boardId: newBoard.id };
+}
+
 export async function getBoardTemplates() {
   return prisma.boardTemplate.findMany({ orderBy: { name: "asc" } });
 }

@@ -296,3 +296,19 @@ export async function deleteComment(commentId: string, boardId: string) {
   revalidatePath(`/board/${boardId}`);
   return { success: true };
 }
+
+export async function updateCardLockedFields(
+  cardId: string,
+  lockedFields: string[],
+  boardId: string
+) {
+  await requireAuth();
+
+  await prisma.card.update({
+    where: { id: cardId },
+    data: { lockedFields: JSON.stringify(lockedFields) },
+  });
+
+  revalidatePath(`/board/${boardId}`);
+  return { success: true };
+}

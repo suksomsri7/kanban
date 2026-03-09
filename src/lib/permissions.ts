@@ -21,6 +21,7 @@ export interface UserBoardPermissions {
   canUploadAttachment: boolean;
   canAddDependency: boolean;
   canComment: boolean;
+  canLockCard: boolean;
 
   canAddColumn: boolean;
   canEditColumn: boolean;
@@ -47,6 +48,7 @@ const FULL_ACCESS: UserBoardPermissions = {
   canUploadAttachment: true,
   canAddDependency: true,
   canComment: true,
+  canLockCard: true,
   canAddColumn: true,
   canEditColumn: true,
   canDeleteColumn: true,
@@ -71,6 +73,7 @@ const NO_ACCESS: UserBoardPermissions = {
   canUploadAttachment: false,
   canAddDependency: false,
   canComment: false,
+  canLockCard: false,
   canAddColumn: false,
   canEditColumn: false,
   canDeleteColumn: false,
@@ -130,6 +133,7 @@ export async function getUserBoardPermissions(boardId: string): Promise<UserBoar
     canUploadAttachment: access.canUploadAttachment,
     canAddDependency: access.canAddDependency,
     canComment: access.canComment,
+    canLockCard: access.canLockCard,
     canAddColumn: access.canAddColumn,
     canEditColumn: access.canEditColumn,
     canDeleteColumn: access.canDeleteColumn,

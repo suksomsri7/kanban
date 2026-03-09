@@ -179,15 +179,16 @@ model Column {
 // ==================== CARD ====================
 
 model Card {
-  id          String    @id @default(cuid())
-  title       String
-  description String?   @db.Text
-  order       String
-  priority    Priority  @default(MEDIUM)
-  dueDate     DateTime?
-  isArchived  Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  title        String
+  description  String?   @db.Text
+  order        String
+  priority     Priority  @default(MEDIUM)
+  dueDate      DateTime?
+  isArchived   Boolean   @default(false)
+  lockedFields Json      @default("[]")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   columnId String
   column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
@@ -375,6 +376,7 @@ model CustomRoleBoardAccess {
   canUploadAttachment    Boolean @default(false)
   canAddDependency       Boolean @default(false)
   canComment             Boolean @default(false)
+  canLockCard            Boolean @default(false)
 
   canAddColumn    Boolean @default(false)
   canEditColumn   Boolean @default(false)

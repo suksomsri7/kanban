@@ -10,6 +10,9 @@ import {
   Check,
   Plus,
   Pencil,
+  Lock,
+  Unlock,
+  ShieldAlert,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
@@ -23,6 +26,7 @@ import {
   deleteCard,
   toggleCardLabel,
   toggleCardAssignee,
+  updateCardLockedFields,
 } from "@/actions/card";
 import { createLabel, updateLabel, deleteLabel } from "@/actions/label";
 import { format } from "date-fns";
@@ -34,6 +38,21 @@ const LABEL_COLORS = [
   "#22c55e", "#10b981", "#14b8a6", "#06b6d4",
   "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7",
   "#ec4899", "#f43f5e", "#6b7280", "#1e293b",
+];
+
+const LOCKABLE_FIELDS = [
+  { key: "title", label: "Title" },
+  { key: "description", label: "Description" },
+  { key: "priority", label: "Priority" },
+  { key: "dueDate", label: "Due Date" },
+  { key: "labels", label: "Labels" },
+  { key: "assignees", label: "Assignees" },
+  { key: "subtasks", label: "Subtasks" },
+  { key: "attachments", label: "Attachments" },
+  { key: "dependencies", label: "Dependencies" },
+  { key: "comments", label: "Comments" },
+  { key: "delete", label: "Delete" },
+  { key: "move", label: "Move" },
 ];
 
 interface CardModalProps {
@@ -90,19 +109,34 @@ export default function CardModal({
   const [labelName, setLabelName] = useState("");
   const [labelColor, setLabelColor] = useState(LABEL_COLORS[0]);
 
+  const [lockedFields, setLockedFields] = useState<string[]>([]);
+  const [showLockPanel, setShowLockPanel] = useState(false);
+
   const full = !permissions || permissions.isFullAccess;
-  const pCanEditTitle = full || permissions?.canEditCardTitle;
-  const pCanEditDesc = full || permissions?.canEditCardDescription;
-  const pCanEditPriority = full || permissions?.canEditCardPriority;
-  const pCanEditDueDate = full || permissions?.canEditCardDueDate;
-  const pCanEditLabels = full || permissions?.canEditCardLabels;
-  const pCanManageLabels = full || permissions?.canManageLabels;
-  const pCanEditAssignees = full || permissions?.canEditCardAssignees;
-  const pCanManageSubtasks = full || permissions?.canManageSubtasks;
-  const pCanUploadAttachment = full || permissions?.canUploadAttachment;
-  const pCanAddDependency = full || permissions?.canAddDependency;
-  const pCanComment = full || permissions?.canComment;
-  const pCanDeleteCard = full || permissions?.canDeleteCard;
+  const pCanLockCard = full || permissions?.canLockCard;
+
+  function isLocked(field: string) {
+    return lockedFields.includes(field);
+  }
+
+  function effectivePerm(basePerm: boolean | undefined, field: string) {
+    if (pCanLockCard) return basePerm;
+    if (isLocked(field)) return false;
+    return basePerm;
+  }
+
+  const pCanEditTitle = effectivePerm(full || permissions?.canEditCardTitle, "title");
+  const pCanEditDesc = effectivePerm(full || permissions?.canEditCardDescription, "description");
+  const pCanEditPriority = effectivePerm(full || permissions?.canEditCardPriority, "priority");
+  const pCanEditDueDate = effectivePerm(full || permissions?.canEditCardDueDate, "dueDate");
+  const pCanEditLabels = effectivePerm(full || permissions?.canEditCardLabels, "labels");
+  const pCanManageLabels = effectivePerm(full || permissions?.canManageLabels, "labels");
+  const pCanEditAssignees = effectivePerm(full || permissions?.canEditCardAssignees, "assignees");
+  const pCanManageSubtasks = effectivePerm(full || permissions?.canManageSubtasks, "subtasks");
+  const pCanUploadAttachment = effectivePerm(full || permissions?.canUploadAttachment, "attachments");
+  const pCanAddDependency = effectivePerm(full || permissions?.canAddDependency, "dependencies");
+  const pCanComment = effectivePerm(full || permissions?.canComment, "comments");
+  const pCanDeleteCard = effectivePerm(full || permissions?.canDeleteCard, "delete");
 
   useEffect(() => {
     loadCard();
@@ -117,6 +151,9 @@ export default function CardModal({
       setDescription(data.description || "");
       setPriority(data.priority);
       setDueDate(data.dueDate ? format(new Date(data.dueDate), "yyyy-MM-dd") : "");
+      const lf = data.lockedFields;
+      const parsed = typeof lf === "string" ? JSON.parse(lf) : lf;
+      setLockedFields(Array.isArray(parsed) ? parsed : []);
     }
     setLoading(false);
   }
@@ -209,6 +246,15 @@ export default function CardModal({
 
   function handleNavigateToCard(newCardId: string) {
     setCardId(newCardId);
+  }
+
+  async function handleToggleLock(field: string) {
+    const next = lockedFields.includes(field)
+      ? lockedFields.filter((f) => f !== field)
+      : [...lockedFields, field];
+    setLockedFields(next);
+    await updateCardLockedFields(cardId, next, boardId);
+    router.refresh();
   }
 
   const assigneeIds = new Set(card?.assignees.map((a) => a.user.id) || []);
@@ -547,6 +593,62 @@ export default function CardModal({
                   onRefresh={loadCard}
                   onCardClick={handleNavigateToCard}
                 />
+
+                {/* Lock Panel */}
+                {pCanLockCard && (
+                  <div>
+                    <button
+                      onClick={() => setShowLockPanel(!showLockPanel)}
+                      className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 hover:text-gray-700"
+                    >
+                      <ShieldAlert size={12} />
+                      Field Locks
+                      {lockedFields.length > 0 && (
+                        <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full normal-case">
+                          {lockedFields.length} locked
+                        </span>
+                      )}
+                    </button>
+                    {showLockPanel && (
+                      <div className="space-y-1 border border-gray-200 rounded-lg p-2.5">
+                        <p className="text-[10px] text-gray-400 mb-1">
+                          Locked fields cannot be edited by users without lock permission.
+                        </p>
+                        {LOCKABLE_FIELDS.map((f) => {
+                          const locked = isLocked(f.key);
+                          return (
+                            <button
+                              key={f.key}
+                              onClick={() => handleToggleLock(f.key)}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-xs transition-colors ${
+                                locked
+                                  ? "bg-amber-50 text-amber-800 border border-amber-200"
+                                  : "hover:bg-gray-50 text-gray-600 border border-transparent"
+                              }`}
+                            >
+                              {locked ? <Lock size={12} className="shrink-0" /> : <Unlock size={12} className="shrink-0 text-gray-300" />}
+                              <span className="flex-1">{f.label}</span>
+                              {locked && <span className="text-[10px] text-amber-600">Locked</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Lock indicator for non-lock users */}
+                {!pCanLockCard && lockedFields.length > 0 && (
+                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+                    <Lock size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-medium text-amber-800">Some fields are locked</p>
+                      <p className="text-[10px] text-amber-600 mt-0.5">
+                        {lockedFields.map((f) => LOCKABLE_FIELDS.find((lf) => lf.key === f)?.label).filter(Boolean).join(", ")}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Delete */}
                 {pCanDeleteCard && (

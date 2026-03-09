@@ -31,6 +31,7 @@ const BoardAccessSchema = z.object({
   canUploadAttachment: z.boolean().default(false),
   canAddDependency: z.boolean().default(false),
   canComment: z.boolean().default(false),
+  canLockCard: z.boolean().default(false),
   canAddColumn: z.boolean().default(false),
   canEditColumn: z.boolean().default(false),
   canDeleteColumn: z.boolean().default(false),
