@@ -293,7 +293,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 sm:px-6 py-2 sm:py-3 bg-white border-b border-gray-200 shrink-0 gap-2">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Link
-            href="/boards"
+            href={board.brandId ? `/brand/${board.brandId}/boards` : `/`}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors shrink-0"
           >
             <ArrowLeft size={20} />

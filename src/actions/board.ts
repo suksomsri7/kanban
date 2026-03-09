@@ -178,7 +178,9 @@ export async function createBoard(formData: FormData) {
 
   await logActivity("BOARD_CREATED", board.id, user.id, { title: parsed.data.title });
 
-  revalidatePath("/boards");
+  if (parsed.data.brandId) {
+    revalidatePath(`/brand/${parsed.data.brandId}/boards`);
+  }
   return { success: true, boardId: board.id };
 }
 
@@ -200,10 +202,12 @@ export async function updateBoard(formData: FormData) {
 
   const { id, ...data } = parsed.data;
 
-  await prisma.board.update({ where: { id }, data });
+  const updatedBoard = await prisma.board.update({ where: { id }, data });
   await logActivity("BOARD_UPDATED", id, user.id, { ...data });
 
-  revalidatePath("/boards");
+  if (updatedBoard.brandId) {
+    revalidatePath(`/brand/${updatedBoard.brandId}/boards`);
+  }
   revalidatePath(`/board/${id}`);
   return { success: true };
 }
@@ -211,12 +215,14 @@ export async function updateBoard(formData: FormData) {
 export async function deleteBoard(boardId: string) {
   await requireAdmin();
 
-  await prisma.board.update({
+  const board = await prisma.board.update({
     where: { id: boardId },
     data: { isArchived: true },
   });
 
-  revalidatePath("/boards");
+  if (board.brandId) {
+    revalidatePath(`/brand/${board.brandId}/boards`);
+  }
   return { success: true };
 }
 
@@ -339,7 +345,6 @@ export async function duplicateBoard(boardId: string) {
     }
   }
 
-  revalidatePath("/boards");
   if (source.brandId) {
     revalidatePath(`/brand/${source.brandId}/boards`);
   }
