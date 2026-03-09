@@ -49,6 +49,7 @@ type BoardAccess = {
   canEditCardPriority: boolean;
   canEditCardDueDate: boolean;
   canEditCardLabels: boolean;
+  canManageLabels: boolean;
   canEditCardAssignees: boolean;
   canManageSubtasks: boolean;
   canUploadAttachment: boolean;
@@ -113,7 +114,8 @@ const PERMISSION_GROUPS = [
       { key: "canEditCardDescription", label: "Edit Description" },
       { key: "canEditCardPriority", label: "Change Priority" },
       { key: "canEditCardDueDate", label: "Set Due Date" },
-      { key: "canEditCardLabels", label: "Edit Labels" },
+      { key: "canEditCardLabels", label: "Assign Labels" },
+      { key: "canManageLabels", label: "Create/Edit/Delete Labels" },
       { key: "canEditCardAssignees", label: "Edit Assignees" },
       { key: "canManageSubtasks", label: "Manage Subtasks" },
       { key: "canUploadAttachment", label: "Upload Attachment" },
@@ -232,6 +234,7 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
       canEditCardPriority: !!boardPerms.canEditCardPriority,
       canEditCardDueDate: !!boardPerms.canEditCardDueDate,
       canEditCardLabels: !!boardPerms.canEditCardLabels,
+      canManageLabels: !!boardPerms.canManageLabels,
       canEditCardAssignees: !!boardPerms.canEditCardAssignees,
       canManageSubtasks: !!boardPerms.canManageSubtasks,
       canUploadAttachment: !!boardPerms.canUploadAttachment,

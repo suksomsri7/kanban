@@ -15,6 +15,7 @@ export interface UserBoardPermissions {
   canEditCardPriority: boolean;
   canEditCardDueDate: boolean;
   canEditCardLabels: boolean;
+  canManageLabels: boolean;
   canEditCardAssignees: boolean;
   canManageSubtasks: boolean;
   canUploadAttachment: boolean;
@@ -40,6 +41,7 @@ const FULL_ACCESS: UserBoardPermissions = {
   canEditCardPriority: true,
   canEditCardDueDate: true,
   canEditCardLabels: true,
+  canManageLabels: true,
   canEditCardAssignees: true,
   canManageSubtasks: true,
   canUploadAttachment: true,
@@ -63,6 +65,7 @@ const NO_ACCESS: UserBoardPermissions = {
   canEditCardPriority: false,
   canEditCardDueDate: false,
   canEditCardLabels: false,
+  canManageLabels: false,
   canEditCardAssignees: false,
   canManageSubtasks: false,
   canUploadAttachment: false,
@@ -121,6 +124,7 @@ export async function getUserBoardPermissions(boardId: string): Promise<UserBoar
     canEditCardPriority: access.canEditCardPriority,
     canEditCardDueDate: access.canEditCardDueDate,
     canEditCardLabels: access.canEditCardLabels,
+    canManageLabels: access.canManageLabels,
     canEditCardAssignees: access.canEditCardAssignees,
     canManageSubtasks: access.canManageSubtasks,
     canUploadAttachment: access.canUploadAttachment,

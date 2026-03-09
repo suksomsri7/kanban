@@ -365,6 +365,7 @@ model CustomRoleBoardAccess {
   canEditCardPriority    Boolean @default(false)
   canEditCardDueDate     Boolean @default(false)
   canEditCardLabels      Boolean @default(false)
+  canManageLabels        Boolean @default(false)
   canEditCardAssignees   Boolean @default(false)
   canManageSubtasks      Boolean @default(false)
   canUploadAttachment    Boolean @default(false)

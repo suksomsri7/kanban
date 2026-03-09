@@ -23,6 +23,7 @@ const BoardAccessSchema = z.object({
   canEditCardPriority: z.boolean().default(false),
   canEditCardDueDate: z.boolean().default(false),
   canEditCardLabels: z.boolean().default(false),
+  canManageLabels: z.boolean().default(false),
   canEditCardAssignees: z.boolean().default(false),
   canManageSubtasks: z.boolean().default(false),
   canUploadAttachment: z.boolean().default(false),

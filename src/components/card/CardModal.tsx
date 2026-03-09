@@ -81,6 +81,10 @@ export default function CardModal({
   const [showAssignees, setShowAssignees] = useState(false);
 
   const [boardLabels, setBoardLabels] = useState(labels);
+
+  useEffect(() => {
+    setBoardLabels(labels);
+  }, [labels]);
   const [labelMode, setLabelMode] = useState<"list" | "create" | "edit">("list");
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [labelName, setLabelName] = useState("");
@@ -92,6 +96,7 @@ export default function CardModal({
   const pCanEditPriority = full || permissions?.canEditCardPriority;
   const pCanEditDueDate = full || permissions?.canEditCardDueDate;
   const pCanEditLabels = full || permissions?.canEditCardLabels;
+  const pCanManageLabels = full || permissions?.canManageLabels;
   const pCanEditAssignees = full || permissions?.canEditCardAssignees;
   const pCanManageSubtasks = full || permissions?.canManageSubtasks;
   const pCanUploadAttachment = full || permissions?.canUploadAttachment;
@@ -403,20 +408,32 @@ export default function CardModal({
                             </div>
                             <span className="text-sm text-gray-700 truncate">{label.name}</span>
                           </button>
-                          <button
-                            onClick={() => openEditLabel(label)}
-                            className="p-1 rounded opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-600 transition-all"
-                          >
-                            <Pencil size={10} />
-                          </button>
+                          {pCanManageLabels && (
+                            <button
+                              onClick={() => openEditLabel(label)}
+                              className="p-1 rounded opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-600 transition-all"
+                            >
+                              <Pencil size={10} />
+                            </button>
+                          )}
+                          {pCanManageLabels && (
+                            <button
+                              onClick={() => handleDeleteLabel(label.id)}
+                              className="p-1 rounded opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          )}
                         </div>
                       ))}
-                      <button
-                        onClick={openCreateLabel}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-blue-600 hover:bg-blue-50 mt-1"
-                      >
-                        <Plus size={12} /> Create new label
-                      </button>
+                      {pCanManageLabels && (
+                        <button
+                          onClick={openCreateLabel}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-blue-600 hover:bg-blue-50 mt-1"
+                        >
+                          <Plus size={12} /> Create new label
+                        </button>
+                      )}
                     </div>
                   )}
                   {showLabels && (labelMode === "create" || labelMode === "edit") && (
