@@ -18,6 +18,7 @@ interface CardThumbProps {
   };
   onCardClick: (cardId: string) => void;
   isDragOverlay?: boolean;
+  canDrag?: boolean;
 }
 
 const priorityColors: Record<string, string> = {
@@ -27,7 +28,7 @@ const priorityColors: Record<string, string> = {
   LOW: "border-l-gray-300",
 };
 
-export default function CardThumb({ card, onCardClick, isDragOverlay }: CardThumbProps) {
+export default function CardThumb({ card, onCardClick, isDragOverlay, canDrag = true }: CardThumbProps) {
   const {
     attributes,
     listeners,
@@ -38,7 +39,7 @@ export default function CardThumb({ card, onCardClick, isDragOverlay }: CardThum
   } = useSortable({
     id: card.id,
     data: { type: "card" },
-    disabled: isDragOverlay,
+    disabled: isDragOverlay || !canDrag,
   });
 
   const style = isDragOverlay

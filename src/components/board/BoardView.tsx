@@ -83,6 +83,10 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
     ? permissions.isFullAccess || permissions.canCreateCard
     : currentUser.role !== "GUEST";
 
+  const canMoveCard = permissions
+    ? permissions.isFullAccess || permissions.canMoveCard
+    : currentUser.role !== "GUEST";
+
   async function handleSaveTitle() {
     const trimmed = editTitle.trim();
     if (!trimmed || trimmed === board.title) {
@@ -279,7 +283,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
             ) : (
               <div className="flex items-center gap-1.5 group/title">
                 <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate">{board.title}</h1>
-                {isEditor && (
+                {(!permissions || permissions.isFullAccess) && (
                   <button
                     onClick={() => { setEditTitle(board.title); setIsEditingTitle(true); }}
                     className="p-1 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-gray-600 opacity-0 group-hover/title:opacity-100 transition-all"
@@ -357,6 +361,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
                   labels={board.labels}
                   isEditor={isEditor}
                   canCreateCard={canCreateCard}
+                  canMoveCard={canMoveCard}
                   canEditColumn={canEditColumn}
                   canDeleteColumn={canDeleteColumn}
                   onCardClick={setSelectedCardId}

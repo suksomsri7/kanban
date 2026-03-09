@@ -20,12 +20,13 @@ interface ColumnProps {
   labels: any[];
   isEditor: boolean;
   canCreateCard?: boolean;
+  canMoveCard?: boolean;
   canEditColumn?: boolean;
   canDeleteColumn?: boolean;
   onCardClick: (cardId: string) => void;
 }
 
-export default function Column({ column, boardId, labels, isEditor, canCreateCard = true, canEditColumn = true, canDeleteColumn = true, onCardClick }: ColumnProps) {
+export default function Column({ column, boardId, labels, isEditor, canCreateCard = true, canMoveCard = true, canEditColumn = true, canDeleteColumn = true, onCardClick }: ColumnProps) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(column.title);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -40,6 +41,7 @@ export default function Column({ column, boardId, labels, isEditor, canCreateCar
   } = useSortable({
     id: column.id,
     data: { type: "column" },
+    disabled: !canMoveCard,
   });
 
   const style = {
@@ -72,7 +74,7 @@ export default function Column({ column, boardId, labels, isEditor, canCreateCar
       {/* Column Header */}
       <div className="flex items-center justify-between px-3 py-3">
         <div className="flex items-center gap-1 flex-1 min-w-0">
-          {isEditor && (
+          {canMoveCard && (
             <button
               {...attributes}
               {...listeners}
@@ -145,7 +147,7 @@ export default function Column({ column, boardId, labels, isEditor, canCreateCar
           strategy={verticalListSortingStrategy}
         >
           {column.cards.map((card) => (
-            <CardThumb key={card.id} card={card} onCardClick={onCardClick} />
+            <CardThumb key={card.id} card={card} onCardClick={onCardClick} canDrag={canMoveCard} />
           ))}
         </SortableContext>
       </div>
