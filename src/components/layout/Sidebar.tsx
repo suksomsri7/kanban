@@ -15,6 +15,7 @@ import {
   X,
   Shield,
   Plus,
+  ClipboardList,
 } from "lucide-react";
 import { useState } from "react";
 import type { SessionUser } from "@/types";
@@ -183,6 +184,21 @@ export default function Sidebar({ user, brands, menuPermissions, mobileOpen, onM
             No brands available
           </p>
         )}
+
+        <div className="my-3 mx-3 border-t border-gray-200" />
+        <Link
+          href="/jobs"
+          onClick={onMobileClose}
+          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            pathname === "/jobs"
+              ? "bg-gray-900 text-white"
+              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          }`}
+          title={collapsed ? "My Jobs" : undefined}
+        >
+          <ClipboardList size={18} className="shrink-0" />
+          {!collapsed && <span>My Jobs</span>}
+        </Link>
 
         {isSuperAdmin && (
           <>

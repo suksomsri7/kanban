@@ -61,7 +61,6 @@ type BoardAccess = {
   canAddColumn: boolean;
   canEditColumn: boolean;
   canDeleteColumn: boolean;
-  canManageWorkflow: boolean;
   allowedColumnIds: unknown;
   board: BoardWithColumns;
 };
@@ -148,12 +147,6 @@ const PERMISSION_GROUPS = [
       { key: "canAddColumn", label: "Add Column" },
       { key: "canEditColumn", label: "Edit Column" },
       { key: "canDeleteColumn", label: "Delete Column" },
-    ],
-  },
-  {
-    label: "Workflow",
-    perms: [
-      { key: "canManageWorkflow", label: "Manage Workflow" },
     ],
   },
 ];
@@ -266,7 +259,6 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
       canAddColumn: !!boardPerms.canAddColumn,
       canEditColumn: !!boardPerms.canEditColumn,
       canDeleteColumn: !!boardPerms.canDeleteColumn,
-      canManageWorkflow: !!boardPerms.canManageWorkflow,
       allowedColumnIds: selectedColumns,
     });
     if (result.error) setError(result.error);

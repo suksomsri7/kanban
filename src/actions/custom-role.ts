@@ -37,7 +37,6 @@ const BoardAccessSchema = z.object({
   canAddColumn: z.boolean().default(false),
   canEditColumn: z.boolean().default(false),
   canDeleteColumn: z.boolean().default(false),
-  canManageWorkflow: z.boolean().default(false),
   allowedColumnIds: z.array(z.string()).default([]),
 });
 

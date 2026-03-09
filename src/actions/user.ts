@@ -20,8 +20,6 @@ const CreateUserSchema = z.object({
   displayName: z.string().min(1, "Display name is required").max(100),
   role: RoleEnum,
   customRoleId: z.string().optional(),
-  isAgent: z.boolean().optional(),
-  telegramChatId: z.string().optional(),
 });
 
 const UpdateUserSchema = z.object({
@@ -30,8 +28,6 @@ const UpdateUserSchema = z.object({
   role: RoleEnum.optional(),
   isActive: z.boolean().optional(),
   customRoleId: z.string().optional(),
-  isAgent: z.boolean().optional(),
-  telegramChatId: z.string().optional(),
 });
 
 export async function getUsers() {
@@ -59,8 +55,6 @@ export async function createUser(formData: FormData) {
     displayName: formData.get("displayName") as string,
     role: formData.get("role") as Role,
     customRoleId: (formData.get("customRoleId") as string) || undefined,
-    isAgent: formData.get("isAgent") === "true",
-    telegramChatId: (formData.get("telegramChatId") as string) || undefined,
   };
 
   const parsed = CreateUserSchema.safeParse(raw);
@@ -85,8 +79,6 @@ export async function createUser(formData: FormData) {
       displayName: parsed.data.displayName,
       role: parsed.data.role,
       customRoleId: parsed.data.customRoleId || null,
-      isAgent: parsed.data.isAgent || false,
-      telegramChatId: parsed.data.telegramChatId || null,
     },
   });
 
@@ -107,12 +99,6 @@ export async function updateUser(formData: FormData) {
       ? formData.get("isActive") === "true"
       : undefined,
     customRoleId: customRoleIdValue || undefined,
-    isAgent: formData.has("isAgent")
-      ? formData.get("isAgent") === "true"
-      : undefined,
-    telegramChatId: formData.has("telegramChatId")
-      ? (formData.get("telegramChatId") as string) || undefined
-      : undefined,
   };
 
   const parsed = UpdateUserSchema.safeParse(raw);
@@ -120,14 +106,13 @@ export async function updateUser(formData: FormData) {
     return { error: parsed.error.issues[0].message };
   }
 
-  const { id, customRoleId, telegramChatId, ...data } = parsed.data;
+  const { id, customRoleId, ...data } = parsed.data;
 
   await prisma.user.update({
     where: { id },
     data: {
       ...data,
       customRoleId: customRoleId || null,
-      ...(telegramChatId !== undefined ? { telegramChatId: telegramChatId || null } : {}),
     },
   });
 

@@ -29,8 +29,6 @@ export interface UserBoardPermissions {
   canEditColumn: boolean;
   canDeleteColumn: boolean;
 
-  canManageWorkflow: boolean;
-
   allowedColumnIds: string[];
 }
 
@@ -58,7 +56,6 @@ const FULL_ACCESS: UserBoardPermissions = {
   canAddColumn: true,
   canEditColumn: true,
   canDeleteColumn: true,
-  canManageWorkflow: true,
   allowedColumnIds: [],
 };
 
@@ -86,7 +83,6 @@ const NO_ACCESS: UserBoardPermissions = {
   canAddColumn: false,
   canEditColumn: false,
   canDeleteColumn: false,
-  canManageWorkflow: false,
   allowedColumnIds: [],
 };
 
@@ -149,7 +145,6 @@ export async function getUserBoardPermissions(boardId: string): Promise<UserBoar
     canAddColumn: access.canAddColumn,
     canEditColumn: access.canEditColumn,
     canDeleteColumn: access.canDeleteColumn,
-    canManageWorkflow: access.canManageWorkflow,
     allowedColumnIds: Array.isArray(colIds) ? colIds : [],
   };
 }
@@ -213,7 +208,6 @@ export async function requireBoardPermission(
     canAddColumn: access.canAddColumn,
     canEditColumn: access.canEditColumn,
     canDeleteColumn: access.canDeleteColumn,
-    canManageWorkflow: access.canManageWorkflow,
     allowedColumnIds: Array.isArray(colIds) ? colIds : [],
   };
 

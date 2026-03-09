@@ -49,17 +49,6 @@ enum ActivityAction {
   MEMBER_REMOVED
   SUBTASK_COMPLETED
   SUBTASK_UNCOMPLETED
-  WORKFLOW_STARTED
-  WORKFLOW_STEP_COMPLETED
-  WORKFLOW_COMPLETED
-}
-
-enum WorkflowStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  FAILED
-  CANCELLED
 }
 
 // ==================== USER & AUTH ====================
@@ -73,8 +62,6 @@ model User {
   role           Role     @default(USER)
   isActive       Boolean  @default(true)
   customRoleId   String?
-  isAgent        Boolean  @default(false)
-  telegramChatId String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -88,10 +75,6 @@ model User {
   notifications  Notification[]
   ownedBrands    Brand[]          @relation("BrandOwner")
   brandMembers   BrandMember[]
-
-  assignedWorkflowTemplateSteps WorkflowTemplateStep[]
-  assignedWorkflowSteps         CardWorkflowStep[]
-  createdWorkflows              CardWorkflow[]
 }
 
 // ==================== BRAND ====================
@@ -158,7 +141,6 @@ model Board {
   labels     Label[]
   activities ActivityLog[]
   customRoleAccess CustomRoleBoardAccess[]
-  workflowTemplates WorkflowTemplate[]
 
   @@index([ownerId])
   @@index([brandId])
@@ -219,7 +201,6 @@ model Card {
   subtasks     Subtask[]
   dependencies CardDependency[] @relation("DependentCard")
   dependedBy   CardDependency[] @relation("BlockingCard")
-  workflow     CardWorkflow?
 
   @@index([columnId])
 }
@@ -403,76 +384,12 @@ model CustomRoleBoardAccess {
   canEditColumn   Boolean @default(false)
   canDeleteColumn Boolean @default(false)
 
-  canManageWorkflow Boolean @default(false)
-
   allowedColumnIds Json @default("[]")
 
   customRole CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
   board      Board      @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   @@unique([customRoleId, boardId])
-}
-
-// ==================== WORKFLOW ====================
-
-model WorkflowTemplate {
-  id      String @id @default(cuid())
-  name    String
-  boardId String
-
-  board Board                @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  steps WorkflowTemplateStep[]
-
-  @@unique([boardId, name])
-  @@index([boardId])
-}
-
-model WorkflowTemplateStep {
-  id           String  @id @default(cuid())
-  templateId   String
-  order        String
-  title        String
-  instructions String  @db.Text
-  assigneeId   String?
-
-  template WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  assignee User?            @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
-
-  @@index([templateId])
-}
-
-model CardWorkflow {
-  id         String         @id @default(cuid())
-  cardId     String         @unique
-  templateId String?
-  status     WorkflowStatus @default(PENDING)
-  createdBy  String
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-
-  card    Card               @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  creator User               @relation(fields: [createdBy], references: [id])
-  steps   CardWorkflowStep[]
-
-  @@index([cardId])
-}
-
-model CardWorkflowStep {
-  id           String         @id @default(cuid())
-  workflowId   String
-  order        String
-  title        String
-  instructions String         @db.Text
-  assigneeId   String?
-  status       WorkflowStatus @default(PENDING)
-  output       String?        @db.Text
-  startedAt    DateTime?
-  completedAt  DateTime?
-
-  workflow CardWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  assignee User?        @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
-
-  @@index([workflowId])
 }
 
 // ==================== BOARD TEMPLATE ====================

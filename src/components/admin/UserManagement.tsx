@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, RotateCcw, UserX, Pencil, Trash2, Bot } from "lucide-react";
+import { Plus, RotateCcw, UserX, Pencil, Trash2 } from "lucide-react";
 import { Role } from "@prisma/client";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
@@ -22,8 +22,6 @@ interface UserData {
   displayName: string;
   role: Role;
   isActive: boolean;
-  isAgent: boolean;
-  telegramChatId: string | null;
   createdAt: Date;
   customRoleId: string | null;
   customRole: { id: string; name: string; color: string | null } | null;
@@ -203,16 +201,9 @@ export default function UserManagement({ initialUsers, customRoles }: UserManage
                   <div className="flex items-center gap-3">
                     <Avatar name={u.displayName} size="sm" />
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-sm font-medium text-gray-900">
-                          {u.displayName}
-                        </p>
-                        {u.isAgent && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">
-                            <Bot size={10} /> Agent
-                          </span>
-                        )}
-                      </div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {u.displayName}
+                      </p>
                       <p className="text-xs text-gray-500">@{u.username}</p>
                     </div>
                   </div>
@@ -352,23 +343,6 @@ export default function UserManagement({ initialUsers, customRoles }: UserManage
             )}
           </div>
 
-          <div className="border-t border-gray-200 pt-4 mt-4">
-            <p className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-1.5">
-              <Bot size={14} className="text-violet-600" /> Agent Settings
-            </p>
-            <div className="space-y-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" name="isAgent" value="true" className="rounded border-gray-300" />
-                <span className="text-sm text-gray-700">This is an AI Agent (OpenClaw)</span>
-              </label>
-              <Input
-                name="telegramChatId"
-                label="Telegram Chat ID"
-                placeholder="e.g. 123456789"
-              />
-            </div>
-          </div>
-
           <div className="flex justify-end gap-2 pt-2">
             <Button
               type="button"
@@ -442,33 +416,6 @@ export default function UserManagement({ initialUsers, customRoles }: UserManage
                 <option value="true">Active</option>
                 <option value="false">Inactive</option>
               </select>
-            </div>
-
-            <div className="border-t border-gray-200 pt-4 mt-4">
-              <p className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-1.5">
-                <Bot size={14} className="text-violet-600" /> Agent Settings
-              </p>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    AI Agent
-                  </label>
-                  <select
-                    name="isAgent"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                    defaultValue={selectedUser.isAgent ? "true" : "false"}
-                  >
-                    <option value="false">No</option>
-                    <option value="true">Yes (OpenClaw Agent)</option>
-                  </select>
-                </div>
-                <Input
-                  name="telegramChatId"
-                  label="Telegram Chat ID"
-                  placeholder="e.g. 123456789"
-                  defaultValue={selectedUser.telegramChatId || ""}
-                />
-              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
