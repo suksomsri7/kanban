@@ -20,6 +20,7 @@ interface CardThumbProps {
   onCardClick: (cardId: string) => void;
   isDragOverlay?: boolean;
   canDrag?: boolean;
+  restricted?: boolean;
 }
 
 const priorityColors: Record<string, string> = {
@@ -29,7 +30,7 @@ const priorityColors: Record<string, string> = {
   LOW: "border-l-gray-300",
 };
 
-export default function CardThumb({ card, onCardClick, isDragOverlay, canDrag = true }: CardThumbProps) {
+export default function CardThumb({ card, onCardClick, isDragOverlay, canDrag = true, restricted = false }: CardThumbProps) {
   const {
     attributes,
     listeners,
@@ -69,10 +70,10 @@ export default function CardThumb({ card, onCardClick, isDragOverlay, canDrag = 
       style={style}
       {...attributes}
       {...listeners}
-      onClick={() => onCardClick(card.id)}
-      className={`bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all border-l-[3px] ${
+      onClick={() => !restricted && onCardClick(card.id)}
+      className={`bg-white rounded-lg border border-gray-200 p-3 transition-all border-l-[3px] ${
         priorityColors[card.priority] || "border-l-gray-300"
-      } ${isDragOverlay ? "shadow-lg" : ""}`}
+      } ${isDragOverlay ? "shadow-lg" : ""} ${restricted ? "opacity-60 cursor-default" : "cursor-pointer hover:border-gray-300 hover:shadow-sm"}`}
     >
       {/* Labels */}
       {card.labels.length > 0 && (

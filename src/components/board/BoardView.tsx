@@ -18,7 +18,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { generateKeyBetween } from "fractional-indexing";
-import { ArrowLeft, Activity, Pencil, Check, X, FileText } from "lucide-react";
+import { ArrowLeft, Activity, Pencil, Check, X, FileText, Palette, Kanban } from "lucide-react";
 import Link from "next/link";
 import Column from "@/components/column/Column";
 import CardThumb from "@/components/card/CardThumb";
@@ -65,6 +65,24 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [editDesc, setEditDesc] = useState(board.description || "");
   const [showDesc, setShowDesc] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const isSuperAdmin = currentUser.role === "SUPER_ADMIN";
+
+  const BOARD_COLORS = [
+    "#111827", "#1e3a5f", "#1e40af", "#3b82f6", "#6366f1",
+    "#7c3aed", "#9333ea", "#c026d3", "#db2777", "#e11d48",
+    "#dc2626", "#ea580c", "#d97706", "#ca8a04", "#65a30d",
+    "#16a34a", "#0d9488", "#0891b2", "#0284c7", "#475569",
+  ];
+
+  async function handleColorChange(color: string) {
+    const formData = new FormData();
+    formData.set("id", board.id);
+    formData.set("color", color);
+    await updateBoard(formData);
+    setShowColorPicker(false);
+  }
 
   const canEditBoardDesc = permissions
     ? permissions.isFullAccess || permissions.canEditBoardDescription
@@ -129,12 +147,13 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
   const allowedColumnIds = permissions?.allowedColumnIds ?? [];
   const hasColumnRestriction = !permissions?.isFullAccess && allowedColumnIds.length > 0;
 
-  const filteredColumns = useMemo(() => {
-    let cols = columns;
+  const restrictedColumnIds = useMemo(() => {
+    if (!hasColumnRestriction) return new Set<string>();
+    return new Set(columns.filter((col) => !allowedColumnIds.includes(col.id)).map((col) => col.id));
+  }, [columns, hasColumnRestriction, allowedColumnIds]);
 
-    if (hasColumnRestriction) {
-      cols = cols.filter((col) => allowedColumnIds.includes(col.id));
-    }
+  const filteredColumns = useMemo(() => {
+    const cols = columns;
 
     if (!filter.search && !filter.assigneeId && !filter.labelId && !filter.priority) {
       return cols;
@@ -158,7 +177,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
         return true;
       }),
     }));
-  }, [columns, filter, hasColumnRestriction, allowedColumnIds]);
+  }, [columns, filter]);
 
   const findCardColumn = useCallback(
     (cardId: string) => columns.find((c) => c.cards.some((card) => card.id === cardId)),
@@ -171,6 +190,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
 
     if (type === "card") {
       const col = findCardColumn(active.id as string);
+      if (col && restrictedColumnIds.has(col.id)) return;
       const card = col?.cards.find((c) => c.id === active.id);
       if (card) setActiveCard(card);
     } else if (type === "column") {
@@ -278,6 +298,34 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
           >
             <ArrowLeft size={20} />
           </Link>
+          <div className="relative shrink-0">
+            <div
+              className={`w-9 h-9 rounded-lg flex items-center justify-center ${isSuperAdmin ? "cursor-pointer hover:opacity-80" : ""}`}
+              style={{ backgroundColor: board.color || "#111827" }}
+              onClick={() => isSuperAdmin && setShowColorPicker(!showColorPicker)}
+              title={isSuperAdmin ? "Change board color" : undefined}
+            >
+              <Kanban size={18} className="text-white" />
+            </div>
+            {showColorPicker && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowColorPicker(false)} />
+                <div className="absolute left-0 top-11 z-20 bg-white rounded-lg border border-gray-200 shadow-xl p-3 w-[200px]">
+                  <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-2">Board Color</p>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {BOARD_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => handleColorChange(c)}
+                        className={`w-8 h-8 rounded-lg transition-all hover:scale-110 ${(board.color || "#111827") === c ? "ring-2 ring-offset-1 ring-gray-900" : ""}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           <div className="min-w-0">
             {isEditingTitle ? (
               <div className="flex items-center gap-1.5">
@@ -439,20 +487,24 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
               items={filteredColumns.map((c) => c.id)}
               strategy={horizontalListSortingStrategy}
             >
-              {filteredColumns.map((column) => (
-                <Column
-                  key={column.id}
-                  column={column}
-                  boardId={board.id}
-                  labels={board.labels}
-                  isEditor={isEditor}
-                  canCreateCard={canCreateCard}
-                  canMoveCard={canMoveCard}
-                  canEditColumn={canEditColumn}
-                  canDeleteColumn={canDeleteColumn}
-                  onCardClick={setSelectedCardId}
-                />
-              ))}
+              {filteredColumns.map((column) => {
+                const isRestricted = restrictedColumnIds.has(column.id);
+                return (
+                  <Column
+                    key={column.id}
+                    column={column}
+                    boardId={board.id}
+                    labels={board.labels}
+                    isEditor={isRestricted ? false : isEditor}
+                    canCreateCard={isRestricted ? false : canCreateCard}
+                    canMoveCard={isRestricted ? false : canMoveCard}
+                    canEditColumn={isRestricted ? false : canEditColumn}
+                    canDeleteColumn={isRestricted ? false : canDeleteColumn}
+                    restricted={isRestricted}
+                    onCardClick={isRestricted ? undefined : setSelectedCardId}
+                  />
+                );
+              })}
             </SortableContext>
 
             {canAddColumn && (
@@ -477,6 +529,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
           cardId={selectedCardId}
           boardId={board.id}
           labels={board.labels}
+          columns={board.columns.map((c) => ({ id: c.id, title: c.title }))}
           members={board.members.map((m) => m.user)}
           allUsers={allUsers}
           isEditor={isEditor}

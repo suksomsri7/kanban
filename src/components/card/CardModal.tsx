@@ -13,6 +13,7 @@ import {
   Lock,
   Unlock,
   ShieldAlert,
+  Columns,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
@@ -24,12 +25,14 @@ import {
   getCardById,
   updateCard,
   deleteCard,
+  moveCard,
   toggleCardLabel,
   toggleCardAssignee,
   updateCardLockedFields,
 } from "@/actions/card";
 import { createLabel, updateLabel, deleteLabel } from "@/actions/label";
 import { format } from "date-fns";
+import { generateKeyBetween } from "fractional-indexing";
 import { useRouter } from "next/navigation";
 import type { UserBoardPermissions } from "@/lib/permissions";
 
@@ -59,6 +62,7 @@ interface CardModalProps {
   cardId: string;
   boardId: string;
   labels: { id: string; name: string; color: string }[];
+  columns: { id: string; title: string }[];
   members: { id: string; displayName: string; username: string; avatar: string | null }[];
   allUsers: { id: string; displayName: string; username: string; avatar: string | null }[];
   isEditor: boolean;
@@ -79,6 +83,7 @@ export default function CardModal({
   cardId: initialCardId,
   boardId,
   labels,
+  columns,
   members,
   allUsers,
   isEditor,
@@ -137,6 +142,7 @@ export default function CardModal({
   const pCanAddDependency = effectivePerm(full || permissions?.canAddDependency, "dependencies");
   const pCanComment = effectivePerm(full || permissions?.canComment, "comments");
   const pCanDeleteCard = effectivePerm(full || permissions?.canDeleteCard, "delete");
+  const pCanMoveCard = effectivePerm(full || permissions?.canMoveCard, "move");
 
   useEffect(() => {
     loadCard();
@@ -182,6 +188,16 @@ export default function CardModal({
     await deleteCard(cardId);
     onClose();
     router.refresh();
+  }
+
+  async function handleStageChange(targetColumnId: string) {
+    if (!card || targetColumnId === card.columnId) return;
+    startTransition(async () => {
+      const order = generateKeyBetween(null, null);
+      await moveCard(cardId, targetColumnId, order, boardId);
+      await loadCard();
+      router.refresh();
+    });
   }
 
   async function handleToggleLabel(labelId: string) {
@@ -374,6 +390,31 @@ export default function CardModal({
 
               {/* Sidebar (1/3) */}
               <div className="space-y-5">
+                {/* Stage (Column) */}
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1 block">
+                    <Columns size={12} /> Stage
+                  </label>
+                  {pCanMoveCard ? (
+                    <select
+                      value={card?.columnId || ""}
+                      onChange={(e) => handleStageChange(e.target.value)}
+                      disabled={isPending}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
+                    >
+                      {columns.map((col) => (
+                        <option key={col.id} value={col.id}>
+                          {col.title}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-sm text-gray-600">
+                      {columns.find((c) => c.id === card?.columnId)?.title || "—"}
+                    </p>
+                  )}
+                </div>
+
                 {/* Priority */}
                 <div>
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 block">

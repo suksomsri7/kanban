@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MoreHorizontal, Pencil, Trash2, GripVertical } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, GripVertical, Lock } from "lucide-react";
 import CardThumb from "@/components/card/CardThumb";
 import AddCard from "@/components/card/AddCard";
 import { updateColumn, deleteColumn } from "@/actions/column";
@@ -23,10 +23,11 @@ interface ColumnProps {
   canMoveCard?: boolean;
   canEditColumn?: boolean;
   canDeleteColumn?: boolean;
-  onCardClick: (cardId: string) => void;
+  restricted?: boolean;
+  onCardClick?: (cardId: string) => void;
 }
 
-export default function Column({ column, boardId, labels, isEditor, canCreateCard = true, canMoveCard = true, canEditColumn = true, canDeleteColumn = true, onCardClick }: ColumnProps) {
+export default function Column({ column, boardId, labels, isEditor, canCreateCard = true, canMoveCard = true, canEditColumn = true, canDeleteColumn = true, restricted = false, onCardClick }: ColumnProps) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(column.title);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -69,12 +70,15 @@ export default function Column({ column, boardId, labels, isEditor, canCreateCar
     <div
       ref={setNodeRef}
       style={style}
-      className="flex flex-col bg-gray-100 rounded-xl w-[280px] sm:w-72 shrink-0 max-h-full"
+      className={`flex flex-col rounded-xl w-[280px] sm:w-72 shrink-0 max-h-full ${restricted ? "bg-gray-200/60" : "bg-gray-100"}`}
     >
       {/* Column Header */}
       <div className="flex items-center justify-between px-3 py-3">
         <div className="flex items-center gap-1 flex-1 min-w-0">
-          {canMoveCard && (
+          {restricted && (
+            <Lock size={14} className="text-gray-400 shrink-0 mr-0.5" />
+          )}
+          {canMoveCard && !restricted && (
             <button
               {...attributes}
               {...listeners}
@@ -147,7 +151,13 @@ export default function Column({ column, boardId, labels, isEditor, canCreateCar
           strategy={verticalListSortingStrategy}
         >
           {column.cards.map((card) => (
-            <CardThumb key={card.id} card={card} onCardClick={onCardClick} canDrag={canMoveCard} />
+            <CardThumb
+              key={card.id}
+              card={card}
+              onCardClick={restricted ? () => {} : (onCardClick || (() => {}))}
+              canDrag={!restricted && canMoveCard}
+              restricted={restricted}
+            />
           ))}
         </SortableContext>
       </div>
