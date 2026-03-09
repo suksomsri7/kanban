@@ -189,7 +189,7 @@ export async function updateBoard(formData: FormData) {
   const raw = {
     id: formData.get("id") as string,
     title: (formData.get("title") as string) || undefined,
-    description: formData.get("description") as string | undefined,
+    description: (formData.get("description") as string | null) ?? undefined,
     color: (formData.get("color") as string) || undefined,
   };
 
