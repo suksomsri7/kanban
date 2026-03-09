@@ -85,12 +85,21 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
     useSensor(KeyboardSensor)
   );
 
+  const allowedColumnIds = permissions?.allowedColumnIds ?? [];
+  const hasColumnRestriction = !permissions?.isFullAccess && allowedColumnIds.length > 0;
+
   const filteredColumns = useMemo(() => {
-    if (!filter.search && !filter.assigneeId && !filter.labelId && !filter.priority) {
-      return columns;
+    let cols = columns;
+
+    if (hasColumnRestriction) {
+      cols = cols.filter((col) => allowedColumnIds.includes(col.id));
     }
 
-    return columns.map((col) => ({
+    if (!filter.search && !filter.assigneeId && !filter.labelId && !filter.priority) {
+      return cols;
+    }
+
+    return cols.map((col) => ({
       ...col,
       cards: col.cards.filter((card) => {
         if (filter.search && !card.title.toLowerCase().includes(filter.search.toLowerCase())) {
@@ -108,7 +117,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
         return true;
       }),
     }));
-  }, [columns, filter]);
+  }, [columns, filter, hasColumnRestriction, allowedColumnIds]);
 
   const findCardColumn = useCallback(
     (cardId: string) => columns.find((c) => c.cards.some((card) => card.id === cardId)),
