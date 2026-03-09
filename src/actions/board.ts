@@ -148,13 +148,7 @@ export async function createBoard(formData: FormData) {
     ];
   }
 
-  if (templateLabels.length === 0) {
-    templateLabels = [
-      { name: "Bug", color: "#ef4444" },
-      { name: "Feature", color: "#3b82f6" },
-      { name: "Improvement", color: "#8b5cf6" },
-    ];
-  }
+  
 
   const board = await prisma.board.create({
     data: {
