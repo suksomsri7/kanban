@@ -21,6 +21,7 @@ import CardSubtasks from "./CardSubtasks";
 import CardDependencies from "./CardDependencies";
 import CardComments from "./CardComments";
 import CardAttachments from "./CardAttachments";
+import CardWorkflow from "./CardWorkflow";
 import {
   getCardById,
   updateCard,
@@ -61,6 +62,7 @@ const LOCKABLE_FIELDS = [
 interface CardModalProps {
   cardId: string;
   boardId: string;
+  currentUserId?: string;
   labels: { id: string; name: string; color: string }[];
   columns: { id: string; title: string }[];
   members: { id: string; displayName: string; username: string; avatar: string | null }[];
@@ -82,6 +84,7 @@ const priorityOptions = [
 export default function CardModal({
   cardId: initialCardId,
   boardId,
+  currentUserId,
   labels,
   columns,
   members,
@@ -623,6 +626,14 @@ export default function CardModal({
                     </>
                   )}
                 </div>
+
+                {/* Workflow */}
+                <CardWorkflow
+                  cardId={cardId}
+                  boardId={boardId}
+                  canManage={!!(permissions?.isFullAccess || permissions?.canManageWorkflow)}
+                  currentUserId={currentUserId || ""}
+                />
 
                 {/* Dependencies */}
                 <CardDependencies

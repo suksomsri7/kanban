@@ -18,13 +18,14 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { generateKeyBetween } from "fractional-indexing";
-import { ArrowLeft, Activity, Pencil, Check, X, FileText, Palette, Kanban } from "lucide-react";
+import { ArrowLeft, Activity, Pencil, Check, X, FileText, Palette, Kanban, Workflow } from "lucide-react";
 import Link from "next/link";
 import Column from "@/components/column/Column";
 import CardThumb from "@/components/card/CardThumb";
 import AddColumn from "@/components/column/AddColumn";
 import CardModal from "@/components/card/CardModal";
 import ActivityPanel from "./ActivityPanel";
+import WorkflowTemplatePanel from "./WorkflowTemplatePanel";
 import BoardFilter, { emptyFilter, type FilterState } from "./BoardFilter";
 import { reorderCards } from "@/actions/card";
 import { reorderColumns } from "@/actions/column";
@@ -66,6 +67,11 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
   const [editDesc, setEditDesc] = useState(board.description || "");
   const [showDesc, setShowDesc] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showWorkflowPanel, setShowWorkflowPanel] = useState(false);
+
+  const canManageWorkflow = permissions
+    ? permissions.isFullAccess || permissions.canManageWorkflow
+    : currentUser.role !== "GUEST";
 
   const isSuperAdmin = currentUser.role === "SUPER_ADMIN";
 
@@ -402,6 +408,20 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
             )}
           </div>
 
+          {canManageWorkflow && (
+            <button
+              onClick={() => setShowWorkflowPanel(!showWorkflowPanel)}
+              className={`p-2 rounded-lg transition-colors shrink-0 ${
+                showWorkflowPanel
+                  ? "bg-violet-600 text-white"
+                  : "hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+              }`}
+              title="Workflow Templates"
+            >
+              <Workflow size={18} />
+            </button>
+          )}
+
           <button
             onClick={() => setShowActivity(!showActivity)}
             className={`p-2 rounded-lg transition-colors shrink-0 ${
@@ -528,6 +548,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
         <CardModal
           cardId={selectedCardId}
           boardId={board.id}
+          currentUserId={currentUser.id}
           labels={board.labels}
           columns={board.columns.map((c) => ({ id: c.id, title: c.title }))}
           members={board.members.map((m) => m.user)}
@@ -543,6 +564,13 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
         boardId={board.id}
         isOpen={showActivity}
         onClose={() => setShowActivity(false)}
+      />
+
+      {/* Workflow Template Panel */}
+      <WorkflowTemplatePanel
+        boardId={board.id}
+        isOpen={showWorkflowPanel}
+        onClose={() => setShowWorkflowPanel(false)}
       />
     </div>
   );

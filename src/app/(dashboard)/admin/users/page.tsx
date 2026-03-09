@@ -13,6 +13,8 @@ export default async function AdminUsersPage() {
         displayName: true,
         role: true,
         isActive: true,
+        isAgent: true,
+        telegramChatId: true,
         createdAt: true,
         customRoleId: true,
         customRole: { select: { id: true, name: true, color: true } },
