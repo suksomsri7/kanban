@@ -67,6 +67,8 @@ type CustomRoleData = {
   name: string;
   description: string | null;
   color: string | null;
+  canViewDashboard: boolean;
+  canViewReports: boolean;
   _count: { users: number };
   boardAccess: BoardAccess[];
   users: { id: string; username: string; displayName: string; avatar: string | null }[];
@@ -318,6 +320,14 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
                     {cr.description && (
                       <p className="text-xs text-gray-500 mt-0.5 truncate">{cr.description}</p>
                     )}
+                    <div className="flex gap-1 mt-1">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${cr.canViewDashboard ? "bg-green-50 text-green-700 border border-green-200" : "bg-gray-50 text-gray-400 border border-gray-100 line-through"}`}>
+                        Dashboard
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${cr.canViewReports ? "bg-green-50 text-green-700 border border-green-200" : "bg-gray-50 text-gray-400 border border-gray-100 line-through"}`}>
+                        Reports
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -491,6 +501,39 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
               ))}
             </div>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Menu Access</label>
+            <div className="border border-gray-200 rounded-lg p-3 space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="hidden" name="canViewDashboard" value="false" />
+                <input
+                  type="checkbox"
+                  defaultChecked={true}
+                  onChange={(e) => {
+                    const hidden = e.target.parentElement?.querySelector('input[type="hidden"]') as HTMLInputElement;
+                    if (hidden) hidden.value = e.target.checked ? "true" : "false";
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black"
+                />
+                <span className="text-sm text-gray-700">Dashboard</span>
+                <span className="text-xs text-gray-400">— View brand dashboard & stats</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="hidden" name="canViewReports" value="false" />
+                <input
+                  type="checkbox"
+                  defaultChecked={false}
+                  onChange={(e) => {
+                    const hidden = e.target.parentElement?.querySelector('input[type="hidden"]') as HTMLInputElement;
+                    if (hidden) hidden.value = e.target.checked ? "true" : "false";
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black"
+                />
+                <span className="text-sm text-gray-700">Reports</span>
+                <span className="text-xs text-gray-400">— View reports & analytics</span>
+              </label>
+            </div>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button>
             <Button type="submit" loading={loading}>Create Role</Button>
@@ -527,6 +570,39 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
                     </div>
                   </label>
                 ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Menu Access</label>
+              <div className="border border-gray-200 rounded-lg p-3 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="hidden" name="canViewDashboard" value={selectedRole.canViewDashboard ? "true" : "false"} />
+                  <input
+                    type="checkbox"
+                    defaultChecked={selectedRole.canViewDashboard}
+                    onChange={(e) => {
+                      const hidden = e.target.parentElement?.querySelector('input[type="hidden"]') as HTMLInputElement;
+                      if (hidden) hidden.value = e.target.checked ? "true" : "false";
+                    }}
+                    className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black"
+                  />
+                  <span className="text-sm text-gray-700">Dashboard</span>
+                  <span className="text-xs text-gray-400">— View brand dashboard & stats</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="hidden" name="canViewReports" value={selectedRole.canViewReports ? "true" : "false"} />
+                  <input
+                    type="checkbox"
+                    defaultChecked={selectedRole.canViewReports}
+                    onChange={(e) => {
+                      const hidden = e.target.parentElement?.querySelector('input[type="hidden"]') as HTMLInputElement;
+                      if (hidden) hidden.value = e.target.checked ? "true" : "false";
+                    }}
+                    className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black"
+                  />
+                  <span className="text-sm text-gray-700">Reports</span>
+                  <span className="text-xs text-gray-400">— View reports & analytics</span>
+                </label>
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">

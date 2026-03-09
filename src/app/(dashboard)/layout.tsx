@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getBrands } from "@/actions/brand";
+import { getUserMenuPermissions } from "@/lib/permissions";
 import AppLayout from "@/components/layout/AppLayout";
 import type { SessionUser } from "@/types";
 
@@ -16,7 +17,10 @@ export default async function DashboardLayout({
   }
 
   const user = session.user as SessionUser;
-  const brands = await getBrands();
+  const [brands, menuPerms] = await Promise.all([
+    getBrands(),
+    getUserMenuPermissions(),
+  ]);
   const brandNav = brands.map((b) => ({
     id: b.id,
     name: b.name,
@@ -24,7 +28,7 @@ export default async function DashboardLayout({
   }));
 
   return (
-    <AppLayout user={user} brands={brandNav}>
+    <AppLayout user={user} brands={brandNav} menuPermissions={menuPerms}>
       {children}
     </AppLayout>
   );

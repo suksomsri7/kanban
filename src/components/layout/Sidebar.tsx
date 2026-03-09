@@ -25,14 +25,20 @@ interface BrandNav {
   color: string | null;
 }
 
+interface MenuPermissions {
+  canViewDashboard: boolean;
+  canViewReports: boolean;
+}
+
 interface SidebarProps {
   user: SessionUser;
   brands: BrandNav[];
+  menuPermissions: MenuPermissions;
   mobileOpen: boolean;
   onMobileClose: () => void;
 }
 
-export default function Sidebar({ user, brands, mobileOpen, onMobileClose }: SidebarProps) {
+export default function Sidebar({ user, brands, menuPermissions, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedBrands, setExpandedBrands] = useState<Set<string>>(() => {
@@ -51,11 +57,12 @@ export default function Sidebar({ user, brands, mobileOpen, onMobileClose }: Sid
     });
   }
 
-  const brandSubItems = [
-    { name: "Dashboard", suffix: "", icon: LayoutDashboard },
-    { name: "Boards", suffix: "/boards", icon: Kanban },
-    { name: "Reports", suffix: "/reports", icon: BarChart3 },
+  const allBrandSubItems = [
+    { name: "Dashboard", suffix: "", icon: LayoutDashboard, visible: menuPermissions.canViewDashboard },
+    { name: "Boards", suffix: "/boards", icon: Kanban, visible: true },
+    { name: "Reports", suffix: "/reports", icon: BarChart3, visible: menuPermissions.canViewReports },
   ];
+  const brandSubItems = allBrandSubItems.filter((item) => item.visible);
 
   const sidebarContent = (
     <>
@@ -97,7 +104,9 @@ export default function Sidebar({ user, brands, mobileOpen, onMobileClose }: Sid
               <button
                 onClick={() => {
                   if (collapsed) {
-                    window.location.href = brandBasePath;
+                    window.location.href = menuPermissions.canViewDashboard
+                      ? brandBasePath
+                      : `${brandBasePath}/boards`;
                   } else {
                     toggleBrand(brand.id);
                   }

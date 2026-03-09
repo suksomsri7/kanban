@@ -7,7 +7,8 @@ import {
   getBrandActivityTrend,
   getBrandBoardStats,
 } from "@/actions/brand-stats";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getUserMenuPermissions } from "@/lib/permissions";
 import type { SessionUser } from "@/types";
 import Link from "next/link";
 import DashboardClient from "@/components/dashboard/DashboardClient";
@@ -28,6 +29,12 @@ export default async function BrandDashboardPage({ params }: Props) {
   const { id } = await params;
   const session = await auth();
   const user = session!.user as SessionUser;
+
+  const menuPerms = await getUserMenuPermissions();
+  if (!menuPerms.canViewDashboard) {
+    redirect(`/brand/${id}/boards`);
+  }
+
   const brand = await getBrandById(id);
 
   if (!brand) notFound();

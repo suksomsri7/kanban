@@ -11,13 +11,19 @@ interface BrandNav {
   color: string | null;
 }
 
+interface MenuPermissions {
+  canViewDashboard: boolean;
+  canViewReports: boolean;
+}
+
 interface AppLayoutProps {
   user: SessionUser;
   brands: BrandNav[];
+  menuPermissions: MenuPermissions;
   children: React.ReactNode;
 }
 
-export default function AppLayout({ user, brands, children }: AppLayoutProps) {
+export default function AppLayout({ user, brands, menuPermissions, children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -32,6 +38,7 @@ export default function AppLayout({ user, brands, children }: AppLayoutProps) {
       <Sidebar
         user={user}
         brands={brands}
+        menuPermissions={menuPermissions}
         mobileOpen={sidebarOpen}
         onMobileClose={() => setSidebarOpen(false)}
       />

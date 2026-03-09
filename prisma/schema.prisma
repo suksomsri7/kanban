@@ -343,6 +343,10 @@ model CustomRole {
   name        String   @unique
   description String?
   color       String?
+
+  canViewDashboard Boolean @default(true)
+  canViewReports   Boolean @default(false)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

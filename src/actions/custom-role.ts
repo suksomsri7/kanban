@@ -9,6 +9,8 @@ const CreateRoleSchema = z.object({
   name: z.string().min(1, "Name is required").max(50),
   description: z.string().max(200).optional(),
   color: z.string().optional(),
+  canViewDashboard: z.boolean().default(true),
+  canViewReports: z.boolean().default(false),
 });
 
 const BoardAccessSchema = z.object({
@@ -113,6 +115,8 @@ export async function createCustomRole(formData: FormData) {
     name: formData.get("name") as string,
     description: (formData.get("description") as string) || undefined,
     color: (formData.get("color") as string) || undefined,
+    canViewDashboard: formData.get("canViewDashboard") === "true",
+    canViewReports: formData.get("canViewReports") === "true",
   };
 
   const parsed = CreateRoleSchema.safeParse(raw);
@@ -136,6 +140,8 @@ export async function updateCustomRole(id: string, formData: FormData) {
     name: formData.get("name") as string,
     description: (formData.get("description") as string) || undefined,
     color: (formData.get("color") as string) || undefined,
+    canViewDashboard: formData.get("canViewDashboard") === "true",
+    canViewReports: formData.get("canViewReports") === "true",
   };
 
   const parsed = CreateRoleSchema.safeParse(raw);

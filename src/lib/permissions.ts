@@ -142,3 +142,44 @@ export function canAccessColumn(permissions: UserBoardPermissions, columnId: str
   if (permissions.allowedColumnIds.length === 0) return true;
   return permissions.allowedColumnIds.includes(columnId);
 }
+
+export interface UserMenuPermissions {
+  canViewDashboard: boolean;
+  canViewReports: boolean;
+}
+
+const FULL_MENU: UserMenuPermissions = {
+  canViewDashboard: true,
+  canViewReports: true,
+};
+
+export async function getUserMenuPermissions(): Promise<UserMenuPermissions> {
+  const session = await auth();
+  if (!session?.user) return { canViewDashboard: false, canViewReports: false };
+
+  const user = session.user as SessionUser;
+
+  if (user.role === "SUPER_ADMIN" || user.role === "ADMIN") {
+    return FULL_MENU;
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: {
+      customRoleId: true,
+      customRole: {
+        select: { canViewDashboard: true, canViewReports: true },
+      },
+    },
+  });
+
+  if (!dbUser?.customRoleId || !dbUser.customRole) {
+    if (user.role === "USER") return FULL_MENU;
+    return { canViewDashboard: false, canViewReports: false };
+  }
+
+  return {
+    canViewDashboard: dbUser.customRole.canViewDashboard,
+    canViewReports: dbUser.customRole.canViewReports,
+  };
+}

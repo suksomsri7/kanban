@@ -11,7 +11,8 @@ import {
   getBrandCardsByColumn,
   getBrandActivityTrend,
 } from "@/actions/brand-stats";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getUserMenuPermissions } from "@/lib/permissions";
 import type { SessionUser } from "@/types";
 import ReportsClient from "@/components/report/ReportsClient";
 
@@ -23,6 +24,12 @@ export default async function BrandReportsPage({ params }: Props) {
   const { id } = await params;
   const session = await auth();
   const user = session!.user as SessionUser;
+
+  const menuPerms = await getUserMenuPermissions();
+  if (!menuPerms.canViewReports) {
+    redirect(`/brand/${id}/boards`);
+  }
+
   const brand = await getBrandById(id);
 
   if (!brand) notFound();

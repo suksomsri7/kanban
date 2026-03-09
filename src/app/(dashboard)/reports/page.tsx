@@ -1,4 +1,6 @@
 import { requireAdmin } from "@/lib/auth-utils";
+import { getUserMenuPermissions } from "@/lib/permissions";
+import { redirect } from "next/navigation";
 import {
   getOverdueCards,
   getTeamPerformance,
@@ -10,6 +12,11 @@ import ReportsClient from "@/components/report/ReportsClient";
 
 export default async function ReportsPage() {
   await requireAdmin();
+
+  const menuPerms = await getUserMenuPermissions();
+  if (!menuPerms.canViewReports) {
+    redirect("/");
+  }
 
   const [
     overdueCards,
