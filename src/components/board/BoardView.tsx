@@ -30,6 +30,7 @@ import { reorderCards } from "@/actions/card";
 import { reorderColumns } from "@/actions/column";
 import { updateBoard } from "@/actions/board";
 import type { SessionUser } from "@/types";
+import type { UserBoardPermissions } from "@/lib/permissions";
 import { useBoardRealtime } from "@/hooks/useRealtime";
 
 type BoardData = NonNullable<Awaited<ReturnType<typeof import("@/actions/board").getBoardById>>>;
@@ -41,9 +42,10 @@ interface BoardViewProps {
   board: BoardData;
   currentUser: SessionUser;
   allUsers: UserOption[];
+  permissions?: UserBoardPermissions;
 }
 
-export default function BoardView({ board, currentUser, allUsers }: BoardViewProps) {
+export default function BoardView({ board, currentUser, allUsers, permissions }: BoardViewProps) {
   useBoardRealtime(board.id);
   const [columns, setColumns] = useState(board.columns);
 
@@ -60,7 +62,9 @@ export default function BoardView({ board, currentUser, allUsers }: BoardViewPro
   const [editTitle, setEditTitle] = useState(board.title);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  const isEditor = currentUser.role !== "GUEST";
+  const isEditor = permissions
+    ? permissions.isFullAccess || permissions.canCreateCard || permissions.canEditCard || permissions.canMoveCard
+    : currentUser.role !== "GUEST";
 
   async function handleSaveTitle() {
     const trimmed = editTitle.trim();

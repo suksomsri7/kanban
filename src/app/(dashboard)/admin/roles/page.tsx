@@ -1,11 +1,22 @@
-import { getUsersWithAccess, getAllBrandsWithBoards } from "@/actions/role";
+import {
+  getCustomRoles,
+  getAllBoardsWithColumns,
+  getAllUsersForAssignment,
+} from "@/actions/custom-role";
 import RolesManager from "@/components/admin/RolesManager";
 
 export default async function RolesPage() {
-  const [users, brandsWithBoards] = await Promise.all([
-    getUsersWithAccess(),
-    getAllBrandsWithBoards(),
+  const [customRoles, boards, users] = await Promise.all([
+    getCustomRoles(),
+    getAllBoardsWithColumns(),
+    getAllUsersForAssignment(),
   ]);
 
-  return <RolesManager users={users} brandsWithBoards={brandsWithBoards} />;
+  return (
+    <RolesManager
+      customRoles={customRoles}
+      boards={boards}
+      users={users}
+    />
+  );
 }

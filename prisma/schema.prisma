@@ -61,9 +61,11 @@ model User {
   avatar       String?
   role         Role     @default(USER)
   isActive     Boolean  @default(true)
+  customRoleId String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  customRole     CustomRole?      @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
   createdBoards  Board[]          @relation("BoardOwner")
   boardMembers   BoardMember[]
   assignedCards  CardAssignee[]
@@ -138,6 +140,7 @@ model Board {
   columns    Column[]
   labels     Label[]
   activities ActivityLog[]
+  customRoleAccess CustomRoleBoardAccess[]
 
   @@index([ownerId])
   @@index([brandId])
@@ -331,6 +334,40 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead, createdAt])
+}
+
+// ==================== CUSTOM ROLE ====================
+
+model CustomRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  boardAccess CustomRoleBoardAccess[]
+}
+
+model CustomRoleBoardAccess {
+  id            String  @id @default(cuid())
+  customRoleId  String
+  boardId       String
+
+  canView       Boolean @default(true)
+  canCreateCard Boolean @default(false)
+  canEditCard   Boolean @default(false)
+  canDeleteCard Boolean @default(false)
+  canMoveCard   Boolean @default(false)
+  canComment    Boolean @default(false)
+
+  allowedColumnIds Json @default("[]")
+
+  customRole CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
+  board      Board      @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([customRoleId, boardId])
 }
 
 // ==================== BOARD TEMPLATE ====================

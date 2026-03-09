@@ -24,7 +24,7 @@ export async function getBoards() {
   const session = await requireAuth();
   const user = session.user as SessionUser;
 
-  if (user.role === "SUPER_ADMIN") {
+  if (user.role === "SUPER_ADMIN" || user.role === "ADMIN") {
     return prisma.board.findMany({
       where: { isArchived: false },
       include: {
@@ -41,6 +41,18 @@ export async function getBoards() {
     });
   }
 
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { customRoleId: true },
+  });
+
+  const customRoleBoardIds = dbUser?.customRoleId
+    ? (await prisma.customRoleBoardAccess.findMany({
+        where: { customRoleId: dbUser.customRoleId, canView: true },
+        select: { boardId: true },
+      })).map((a) => a.boardId)
+    : [];
+
   return prisma.board.findMany({
     where: {
       isArchived: false,
@@ -48,6 +60,7 @@ export async function getBoards() {
         { ownerId: user.id },
         { members: { some: { userId: user.id } } },
         { brand: { members: { some: { userId: user.id } } } },
+        ...(customRoleBoardIds.length > 0 ? [{ id: { in: customRoleBoardIds } }] : []),
       ],
     },
     include: {

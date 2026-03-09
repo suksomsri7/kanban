@@ -3,6 +3,7 @@ import { getBoardById } from "@/actions/board";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import BoardView from "@/components/board/BoardView";
+import { getUserBoardPermissions } from "@/lib/permissions";
 import type { SessionUser } from "@/types";
 
 interface Props {
@@ -13,9 +14,14 @@ export default async function BoardPage({ params }: Props) {
   const { id } = await params;
   const session = await auth();
   const user = session!.user as SessionUser;
-  const board = await getBoardById(id);
+
+  const [board, permissions] = await Promise.all([
+    getBoardById(id),
+    getUserBoardPermissions(id),
+  ]);
 
   if (!board) notFound();
+  if (!permissions.hasAccess || !permissions.canView) notFound();
 
   const allUsers = await prisma.user.findMany({
     where: { isActive: true },
@@ -23,5 +29,5 @@ export default async function BoardPage({ params }: Props) {
     orderBy: { displayName: "asc" },
   });
 
-  return <BoardView board={board} currentUser={user} allUsers={allUsers} />;
+  return <BoardView board={board} currentUser={user} allUsers={allUsers} permissions={permissions} />;
 }
