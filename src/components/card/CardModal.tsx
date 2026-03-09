@@ -24,6 +24,7 @@ import {
 } from "@/actions/card";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import type { UserBoardPermissions } from "@/lib/permissions";
 
 interface CardModalProps {
   cardId: string;
@@ -32,6 +33,7 @@ interface CardModalProps {
   members: { id: string; displayName: string; username: string; avatar: string | null }[];
   allUsers: { id: string; displayName: string; username: string; avatar: string | null }[];
   isEditor: boolean;
+  permissions?: UserBoardPermissions;
   onClose: () => void;
 }
 
@@ -51,6 +53,7 @@ export default function CardModal({
   members,
   allUsers,
   isEditor,
+  permissions,
   onClose,
 }: CardModalProps) {
   const router = useRouter();
@@ -66,6 +69,19 @@ export default function CardModal({
 
   const [showLabels, setShowLabels] = useState(false);
   const [showAssignees, setShowAssignees] = useState(false);
+
+  const full = !permissions || permissions.isFullAccess;
+  const pCanEditTitle = full || permissions?.canEditCardTitle;
+  const pCanEditDesc = full || permissions?.canEditCardDescription;
+  const pCanEditPriority = full || permissions?.canEditCardPriority;
+  const pCanEditDueDate = full || permissions?.canEditCardDueDate;
+  const pCanEditLabels = full || permissions?.canEditCardLabels;
+  const pCanEditAssignees = full || permissions?.canEditCardAssignees;
+  const pCanManageSubtasks = full || permissions?.canManageSubtasks;
+  const pCanUploadAttachment = full || permissions?.canUploadAttachment;
+  const pCanAddDependency = full || permissions?.canAddDependency;
+  const pCanComment = full || permissions?.canComment;
+  const pCanDeleteCard = full || permissions?.canDeleteCard;
 
   useEffect(() => {
     loadCard();
@@ -142,7 +158,7 @@ export default function CardModal({
           <div className="flex-1 min-w-0 mr-4">
             {loading ? (
               <div className="h-7 w-48 bg-gray-100 rounded animate-pulse" />
-            ) : isEditor ? (
+            ) : pCanEditTitle ? (
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -183,7 +199,7 @@ export default function CardModal({
                   <label className="text-sm font-medium text-gray-700 mb-1 block">
                     Description
                   </label>
-                  {isEditor ? (
+                  {pCanEditDesc ? (
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
@@ -219,7 +235,7 @@ export default function CardModal({
                   subtasks={card.subtasks}
                   cardId={cardId}
                   boardId={boardId}
-                  isEditor={isEditor}
+                  isEditor={!!pCanManageSubtasks}
                   onRefresh={loadCard}
                 />
 
@@ -228,7 +244,7 @@ export default function CardModal({
                   attachments={card.attachments}
                   cardId={cardId}
                   boardId={boardId}
-                  isEditor={isEditor}
+                  isEditor={!!pCanUploadAttachment}
                   onRefresh={loadCard}
                 />
 
@@ -237,7 +253,7 @@ export default function CardModal({
                   comments={card.comments}
                   cardId={cardId}
                   boardId={boardId}
-                  isEditor={isEditor}
+                  isEditor={!!pCanComment}
                   allUsers={allUsers}
                   onRefresh={loadCard}
                 />
@@ -250,7 +266,7 @@ export default function CardModal({
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 block">
                     Priority
                   </label>
-                  {isEditor ? (
+                  {pCanEditPriority ? (
                     <select
                       value={priority}
                       onChange={(e) => {
@@ -277,7 +293,7 @@ export default function CardModal({
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1 block">
                     <Calendar size={12} /> Due Date
                   </label>
-                  {isEditor ? (
+                  {pCanEditDueDate ? (
                     <input
                       type="date"
                       value={dueDate}
@@ -299,7 +315,7 @@ export default function CardModal({
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1 block">
                     <Tag size={12} /> Labels
                   </label>
-                  {isEditor && (
+                  {pCanEditLabels && (
                     <button
                       onClick={() => setShowLabels(!showLabels)}
                       className="text-xs text-gray-500 hover:text-gray-700 mb-2"
@@ -341,7 +357,7 @@ export default function CardModal({
                       <span className="text-sm text-gray-700">{a.user.displayName}</span>
                     </div>
                   ))}
-                  {isEditor && (
+                  {pCanEditAssignees && (
                     <>
                       <button
                         onClick={() => setShowAssignees(!showAssignees)}
@@ -376,13 +392,13 @@ export default function CardModal({
                   boardId={boardId}
                   dependencies={card.dependencies}
                   dependedBy={card.dependedBy}
-                  isEditor={isEditor}
+                  isEditor={!!pCanAddDependency}
                   onRefresh={loadCard}
                   onCardClick={handleNavigateToCard}
                 />
 
                 {/* Delete */}
-                {isEditor && (
+                {pCanDeleteCard && (
                   <div className="pt-4 border-t border-gray-100">
                     <button
                       onClick={handleDelete}

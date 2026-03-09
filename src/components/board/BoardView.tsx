@@ -63,7 +63,8 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const isEditor = permissions
-    ? permissions.isFullAccess || permissions.canCreateCard || permissions.canEditCard || permissions.canMoveCard
+    ? permissions.isFullAccess || permissions.canCreateCard || permissions.canMoveCard ||
+      permissions.canEditCardTitle || permissions.canEditCardDescription
     : currentUser.role !== "GUEST";
 
   const canAddColumn = permissions
@@ -76,6 +77,10 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
 
   const canDeleteColumn = permissions
     ? permissions.isFullAccess || permissions.canDeleteColumn
+    : currentUser.role !== "GUEST";
+
+  const canCreateCard = permissions
+    ? permissions.isFullAccess || permissions.canCreateCard
     : currentUser.role !== "GUEST";
 
   async function handleSaveTitle() {
@@ -351,6 +356,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
                   boardId={board.id}
                   labels={board.labels}
                   isEditor={isEditor}
+                  canCreateCard={canCreateCard}
                   canEditColumn={canEditColumn}
                   canDeleteColumn={canDeleteColumn}
                   onCardClick={setSelectedCardId}
@@ -383,6 +389,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
           members={board.members.map((m) => m.user)}
           allUsers={allUsers}
           isEditor={isEditor}
+          permissions={permissions}
           onClose={() => setSelectedCardId(null)}
         />
       )}

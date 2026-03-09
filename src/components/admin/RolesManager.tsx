@@ -42,9 +42,17 @@ type BoardAccess = {
   boardId: string;
   canView: boolean;
   canCreateCard: boolean;
-  canEditCard: boolean;
   canDeleteCard: boolean;
   canMoveCard: boolean;
+  canEditCardTitle: boolean;
+  canEditCardDescription: boolean;
+  canEditCardPriority: boolean;
+  canEditCardDueDate: boolean;
+  canEditCardLabels: boolean;
+  canEditCardAssignees: boolean;
+  canManageSubtasks: boolean;
+  canUploadAttachment: boolean;
+  canAddDependency: boolean;
   canComment: boolean;
   canAddColumn: boolean;
   canEditColumn: boolean;
@@ -83,17 +91,55 @@ const ROLE_COLORS = [
   "#ec4899", "#06b6d4", "#f97316", "#6366f1", "#14b8a6",
 ];
 
-const PERMISSION_LABELS: Record<string, string> = {
-  canView: "View Board",
-  canCreateCard: "Create Card",
-  canEditCard: "Edit Card",
-  canDeleteCard: "Delete Card",
-  canMoveCard: "Move Card",
-  canComment: "Comment",
-  canAddColumn: "Add Column",
-  canEditColumn: "Edit Column",
-  canDeleteColumn: "Delete Column",
-};
+const PERMISSION_GROUPS = [
+  {
+    label: "Board",
+    perms: [
+      { key: "canView", label: "View Board" },
+    ],
+  },
+  {
+    label: "Card",
+    perms: [
+      { key: "canCreateCard", label: "Create Card" },
+      { key: "canDeleteCard", label: "Delete Card" },
+      { key: "canMoveCard", label: "Move Card" },
+    ],
+  },
+  {
+    label: "Card Edit",
+    perms: [
+      { key: "canEditCardTitle", label: "Edit Title" },
+      { key: "canEditCardDescription", label: "Edit Description" },
+      { key: "canEditCardPriority", label: "Change Priority" },
+      { key: "canEditCardDueDate", label: "Set Due Date" },
+      { key: "canEditCardLabels", label: "Edit Labels" },
+      { key: "canEditCardAssignees", label: "Edit Assignees" },
+      { key: "canManageSubtasks", label: "Manage Subtasks" },
+      { key: "canUploadAttachment", label: "Upload Attachment" },
+      { key: "canAddDependency", label: "Add Dependency" },
+    ],
+  },
+  {
+    label: "Comment",
+    perms: [
+      { key: "canComment", label: "Comment" },
+    ],
+  },
+  {
+    label: "Column",
+    perms: [
+      { key: "canAddColumn", label: "Add Column" },
+      { key: "canEditColumn", label: "Edit Column" },
+      { key: "canDeleteColumn", label: "Delete Column" },
+    ],
+  },
+];
+
+const ALL_PERM_KEYS = PERMISSION_GROUPS.flatMap((g) => g.perms.map((p) => p.key));
+const ALL_PERM_LABEL_MAP: Record<string, string> = Object.fromEntries(
+  PERMISSION_GROUPS.flatMap((g) => g.perms.map((p) => [p.key, p.label]))
+);
 
 export default function RolesManager({ customRoles, boards, users }: Props) {
   const router = useRouter();
@@ -110,17 +156,10 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
   // Board access modal state
   const [boardModalRoleId, setBoardModalRoleId] = useState("");
   const [boardModalBoardId, setBoardModalBoardId] = useState("");
-  const [boardPerms, setBoardPerms] = useState({
-    canView: true,
-    canCreateCard: false,
-    canEditCard: false,
-    canDeleteCard: false,
-    canMoveCard: false,
-    canComment: false,
-    canAddColumn: false,
-    canEditColumn: false,
-    canDeleteColumn: false,
-  });
+  const defaultPerms: Record<string, boolean> = Object.fromEntries(
+    ALL_PERM_KEYS.map((k) => [k, k === "canView"])
+  );
+  const [boardPerms, setBoardPerms] = useState<Record<string, boolean>>(defaultPerms);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
@@ -155,7 +194,7 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
   function openAddBoard(roleId: string) {
     setBoardModalRoleId(roleId);
     setBoardModalBoardId("");
-    setBoardPerms({ canView: true, canCreateCard: false, canEditCard: false, canDeleteCard: false, canMoveCard: false, canComment: false, canAddColumn: false, canEditColumn: false, canDeleteColumn: false });
+    setBoardPerms({ ...defaultPerms });
     setSelectedColumns([]);
     setSelectedBoardAccess(null);
     setError("");
@@ -165,17 +204,9 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
   function openEditBoard(access: BoardAccess) {
     setBoardModalRoleId(access.customRoleId);
     setBoardModalBoardId(access.boardId);
-    setBoardPerms({
-      canView: access.canView,
-      canCreateCard: access.canCreateCard,
-      canEditCard: access.canEditCard,
-      canDeleteCard: access.canDeleteCard,
-      canMoveCard: access.canMoveCard,
-      canComment: access.canComment,
-      canAddColumn: access.canAddColumn,
-      canEditColumn: access.canEditColumn,
-      canDeleteColumn: access.canDeleteColumn,
-    });
+    setBoardPerms(
+      Object.fromEntries(ALL_PERM_KEYS.map((k) => [k, !!(access as any)[k]]))
+    );
     const colIds = typeof access.allowedColumnIds === "string"
       ? JSON.parse(access.allowedColumnIds)
       : access.allowedColumnIds;
@@ -192,7 +223,23 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
     const result = await setRoleBoardAccess({
       customRoleId: boardModalRoleId,
       boardId: boardModalBoardId,
-      ...boardPerms,
+      canView: !!boardPerms.canView,
+      canCreateCard: !!boardPerms.canCreateCard,
+      canDeleteCard: !!boardPerms.canDeleteCard,
+      canMoveCard: !!boardPerms.canMoveCard,
+      canEditCardTitle: !!boardPerms.canEditCardTitle,
+      canEditCardDescription: !!boardPerms.canEditCardDescription,
+      canEditCardPriority: !!boardPerms.canEditCardPriority,
+      canEditCardDueDate: !!boardPerms.canEditCardDueDate,
+      canEditCardLabels: !!boardPerms.canEditCardLabels,
+      canEditCardAssignees: !!boardPerms.canEditCardAssignees,
+      canManageSubtasks: !!boardPerms.canManageSubtasks,
+      canUploadAttachment: !!boardPerms.canUploadAttachment,
+      canAddDependency: !!boardPerms.canAddDependency,
+      canComment: !!boardPerms.canComment,
+      canAddColumn: !!boardPerms.canAddColumn,
+      canEditColumn: !!boardPerms.canEditColumn,
+      canDeleteColumn: !!boardPerms.canDeleteColumn,
       allowedColumnIds: selectedColumns,
     });
     if (result.error) setError(result.error);
@@ -365,16 +412,16 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
                                     </div>
                                   </div>
                                   <div className="flex flex-wrap gap-1.5 mb-2">
-                                    {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
+                                    {ALL_PERM_KEYS.map((key) => (
                                       <span
                                         key={key}
                                         className={`text-xs px-2 py-0.5 rounded-full ${
-                                          ba[key as keyof typeof ba]
+                                          (ba as any)[key]
                                             ? "bg-green-50 text-green-700 border border-green-200"
                                             : "bg-gray-50 text-gray-400 border border-gray-100 line-through"
                                         }`}
                                       >
-                                        {label}
+                                        {ALL_PERM_LABEL_MAP[key]}
                                       </span>
                                     ))}
                                   </div>
@@ -517,17 +564,37 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
-            <div className="space-y-2">
-              {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={boardPerms[key as keyof typeof boardPerms]}
-                    onChange={(e) => setBoardPerms({ ...boardPerms, [key]: e.target.checked })}
-                    className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black"
-                  />
-                  <span className="text-sm text-gray-700">{label}</span>
-                </label>
+            <div className="space-y-3 max-h-72 overflow-y-auto border border-gray-200 rounded-lg p-3">
+              {PERMISSION_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{group.label}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allOn = group.perms.every((p) => boardPerms[p.key]);
+                        const updates = Object.fromEntries(group.perms.map((p) => [p.key, !allOn]));
+                        setBoardPerms({ ...boardPerms, ...updates });
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-800"
+                    >
+                      {group.perms.every((p) => boardPerms[p.key]) ? "Uncheck all" : "Check all"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    {group.perms.map((p) => (
+                      <label key={p.key} className="flex items-center gap-2 cursor-pointer py-0.5">
+                        <input
+                          type="checkbox"
+                          checked={!!boardPerms[p.key]}
+                          onChange={(e) => setBoardPerms({ ...boardPerms, [p.key]: e.target.checked })}
+                          className="w-3.5 h-3.5 rounded border-gray-300 text-black focus:ring-black"
+                        />
+                        <span className="text-xs text-gray-700">{p.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>

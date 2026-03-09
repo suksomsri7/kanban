@@ -2,60 +2,76 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import type { SessionUser } from "@/types";
 
-export type BoardPermission =
-  | "canView"
-  | "canCreateCard"
-  | "canEditCard"
-  | "canDeleteCard"
-  | "canMoveCard"
-  | "canComment"
-  | "canAddColumn"
-  | "canEditColumn"
-  | "canDeleteColumn";
-
 export interface UserBoardPermissions {
   hasAccess: boolean;
+  isFullAccess: boolean;
   canView: boolean;
   canCreateCard: boolean;
-  canEditCard: boolean;
   canDeleteCard: boolean;
   canMoveCard: boolean;
+
+  canEditCardTitle: boolean;
+  canEditCardDescription: boolean;
+  canEditCardPriority: boolean;
+  canEditCardDueDate: boolean;
+  canEditCardLabels: boolean;
+  canEditCardAssignees: boolean;
+  canManageSubtasks: boolean;
+  canUploadAttachment: boolean;
+  canAddDependency: boolean;
   canComment: boolean;
+
   canAddColumn: boolean;
   canEditColumn: boolean;
   canDeleteColumn: boolean;
+
   allowedColumnIds: string[];
-  isFullAccess: boolean;
 }
 
 const FULL_ACCESS: UserBoardPermissions = {
   hasAccess: true,
+  isFullAccess: true,
   canView: true,
   canCreateCard: true,
-  canEditCard: true,
   canDeleteCard: true,
   canMoveCard: true,
+  canEditCardTitle: true,
+  canEditCardDescription: true,
+  canEditCardPriority: true,
+  canEditCardDueDate: true,
+  canEditCardLabels: true,
+  canEditCardAssignees: true,
+  canManageSubtasks: true,
+  canUploadAttachment: true,
+  canAddDependency: true,
   canComment: true,
   canAddColumn: true,
   canEditColumn: true,
   canDeleteColumn: true,
   allowedColumnIds: [],
-  isFullAccess: true,
 };
 
 const NO_ACCESS: UserBoardPermissions = {
   hasAccess: false,
+  isFullAccess: false,
   canView: false,
   canCreateCard: false,
-  canEditCard: false,
   canDeleteCard: false,
   canMoveCard: false,
+  canEditCardTitle: false,
+  canEditCardDescription: false,
+  canEditCardPriority: false,
+  canEditCardDueDate: false,
+  canEditCardLabels: false,
+  canEditCardAssignees: false,
+  canManageSubtasks: false,
+  canUploadAttachment: false,
+  canAddDependency: false,
   canComment: false,
   canAddColumn: false,
   canEditColumn: false,
   canDeleteColumn: false,
   allowedColumnIds: [],
-  isFullAccess: false,
 };
 
 export async function getUserBoardPermissions(boardId: string): Promise<UserBoardPermissions> {
@@ -95,17 +111,25 @@ export async function getUserBoardPermissions(boardId: string): Promise<UserBoar
 
   return {
     hasAccess: true,
+    isFullAccess: false,
     canView: access.canView,
     canCreateCard: access.canCreateCard,
-    canEditCard: access.canEditCard,
     canDeleteCard: access.canDeleteCard,
     canMoveCard: access.canMoveCard,
+    canEditCardTitle: access.canEditCardTitle,
+    canEditCardDescription: access.canEditCardDescription,
+    canEditCardPriority: access.canEditCardPriority,
+    canEditCardDueDate: access.canEditCardDueDate,
+    canEditCardLabels: access.canEditCardLabels,
+    canEditCardAssignees: access.canEditCardAssignees,
+    canManageSubtasks: access.canManageSubtasks,
+    canUploadAttachment: access.canUploadAttachment,
+    canAddDependency: access.canAddDependency,
     canComment: access.canComment,
     canAddColumn: access.canAddColumn,
     canEditColumn: access.canEditColumn,
     canDeleteColumn: access.canDeleteColumn,
     allowedColumnIds: Array.isArray(colIds) ? colIds : [],
-    isFullAccess: false,
   };
 }
 

@@ -19,12 +19,13 @@ interface ColumnProps {
   boardId: string;
   labels: any[];
   isEditor: boolean;
+  canCreateCard?: boolean;
   canEditColumn?: boolean;
   canDeleteColumn?: boolean;
   onCardClick: (cardId: string) => void;
 }
 
-export default function Column({ column, boardId, labels, isEditor, canEditColumn = true, canDeleteColumn = true, onCardClick }: ColumnProps) {
+export default function Column({ column, boardId, labels, isEditor, canCreateCard = true, canEditColumn = true, canDeleteColumn = true, onCardClick }: ColumnProps) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(column.title);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -150,7 +151,7 @@ export default function Column({ column, boardId, labels, isEditor, canEditColum
       </div>
 
       {/* Add Card */}
-      {isEditor && (
+      {canCreateCard && (
         <div className="px-2 pb-2">
           <AddCard
             columnId={column.id}
