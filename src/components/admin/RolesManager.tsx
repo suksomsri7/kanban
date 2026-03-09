@@ -46,6 +46,9 @@ type BoardAccess = {
   canDeleteCard: boolean;
   canMoveCard: boolean;
   canComment: boolean;
+  canAddColumn: boolean;
+  canEditColumn: boolean;
+  canDeleteColumn: boolean;
   allowedColumnIds: unknown;
   board: BoardWithColumns;
 };
@@ -87,6 +90,9 @@ const PERMISSION_LABELS: Record<string, string> = {
   canDeleteCard: "Delete Card",
   canMoveCard: "Move Card",
   canComment: "Comment",
+  canAddColumn: "Add Column",
+  canEditColumn: "Edit Column",
+  canDeleteColumn: "Delete Column",
 };
 
 export default function RolesManager({ customRoles, boards, users }: Props) {
@@ -111,6 +117,9 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
     canDeleteCard: false,
     canMoveCard: false,
     canComment: false,
+    canAddColumn: false,
+    canEditColumn: false,
+    canDeleteColumn: false,
   });
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
 
@@ -146,7 +155,7 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
   function openAddBoard(roleId: string) {
     setBoardModalRoleId(roleId);
     setBoardModalBoardId("");
-    setBoardPerms({ canView: true, canCreateCard: false, canEditCard: false, canDeleteCard: false, canMoveCard: false, canComment: false });
+    setBoardPerms({ canView: true, canCreateCard: false, canEditCard: false, canDeleteCard: false, canMoveCard: false, canComment: false, canAddColumn: false, canEditColumn: false, canDeleteColumn: false });
     setSelectedColumns([]);
     setSelectedBoardAccess(null);
     setError("");
@@ -163,6 +172,9 @@ export default function RolesManager({ customRoles, boards, users }: Props) {
       canDeleteCard: access.canDeleteCard,
       canMoveCard: access.canMoveCard,
       canComment: access.canComment,
+      canAddColumn: access.canAddColumn,
+      canEditColumn: access.canEditColumn,
+      canDeleteColumn: access.canDeleteColumn,
     });
     const colIds = typeof access.allowedColumnIds === "string"
       ? JSON.parse(access.allowedColumnIds)

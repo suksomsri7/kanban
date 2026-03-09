@@ -8,7 +8,10 @@ export type BoardPermission =
   | "canEditCard"
   | "canDeleteCard"
   | "canMoveCard"
-  | "canComment";
+  | "canComment"
+  | "canAddColumn"
+  | "canEditColumn"
+  | "canDeleteColumn";
 
 export interface UserBoardPermissions {
   hasAccess: boolean;
@@ -18,6 +21,9 @@ export interface UserBoardPermissions {
   canDeleteCard: boolean;
   canMoveCard: boolean;
   canComment: boolean;
+  canAddColumn: boolean;
+  canEditColumn: boolean;
+  canDeleteColumn: boolean;
   allowedColumnIds: string[];
   isFullAccess: boolean;
 }
@@ -30,6 +36,9 @@ const FULL_ACCESS: UserBoardPermissions = {
   canDeleteCard: true,
   canMoveCard: true,
   canComment: true,
+  canAddColumn: true,
+  canEditColumn: true,
+  canDeleteColumn: true,
   allowedColumnIds: [],
   isFullAccess: true,
 };
@@ -42,6 +51,9 @@ const NO_ACCESS: UserBoardPermissions = {
   canDeleteCard: false,
   canMoveCard: false,
   canComment: false,
+  canAddColumn: false,
+  canEditColumn: false,
+  canDeleteColumn: false,
   allowedColumnIds: [],
   isFullAccess: false,
 };
@@ -89,6 +101,9 @@ export async function getUserBoardPermissions(boardId: string): Promise<UserBoar
     canDeleteCard: access.canDeleteCard,
     canMoveCard: access.canMoveCard,
     canComment: access.canComment,
+    canAddColumn: access.canAddColumn,
+    canEditColumn: access.canEditColumn,
+    canDeleteColumn: access.canDeleteColumn,
     allowedColumnIds: Array.isArray(colIds) ? colIds : [],
     isFullAccess: false,
   };

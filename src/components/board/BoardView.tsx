@@ -66,6 +66,18 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
     ? permissions.isFullAccess || permissions.canCreateCard || permissions.canEditCard || permissions.canMoveCard
     : currentUser.role !== "GUEST";
 
+  const canAddColumn = permissions
+    ? permissions.isFullAccess || permissions.canAddColumn
+    : currentUser.role !== "GUEST";
+
+  const canEditColumn = permissions
+    ? permissions.isFullAccess || permissions.canEditColumn
+    : currentUser.role !== "GUEST";
+
+  const canDeleteColumn = permissions
+    ? permissions.isFullAccess || permissions.canDeleteColumn
+    : currentUser.role !== "GUEST";
+
   async function handleSaveTitle() {
     const trimmed = editTitle.trim();
     if (!trimmed || trimmed === board.title) {
@@ -339,12 +351,14 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
                   boardId={board.id}
                   labels={board.labels}
                   isEditor={isEditor}
+                  canEditColumn={canEditColumn}
+                  canDeleteColumn={canDeleteColumn}
                   onCardClick={setSelectedCardId}
                 />
               ))}
             </SortableContext>
 
-            {isEditor && (
+            {canAddColumn && (
               <AddColumn
                 boardId={board.id}
                 lastOrder={columns.length > 0 ? columns[columns.length - 1].order : null}

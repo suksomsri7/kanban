@@ -19,10 +19,12 @@ interface ColumnProps {
   boardId: string;
   labels: any[];
   isEditor: boolean;
+  canEditColumn?: boolean;
+  canDeleteColumn?: boolean;
   onCardClick: (cardId: string) => void;
 }
 
-export default function Column({ column, boardId, labels, isEditor, onCardClick }: ColumnProps) {
+export default function Column({ column, boardId, labels, isEditor, canEditColumn = true, canDeleteColumn = true, onCardClick }: ColumnProps) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(column.title);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -90,7 +92,7 @@ export default function Column({ column, boardId, labels, isEditor, onCardClick 
           ) : (
             <h3
               className="text-sm font-semibold text-gray-900 truncate cursor-pointer"
-              onDoubleClick={() => isEditor && setEditing(true)}
+              onDoubleClick={() => isEditor && canEditColumn && setEditing(true)}
             >
               {column.title}
             </h3>
@@ -100,7 +102,7 @@ export default function Column({ column, boardId, labels, isEditor, onCardClick 
           </span>
         </div>
 
-        {isEditor && (
+        {isEditor && (canEditColumn || canDeleteColumn) && (
           <div className="relative">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
@@ -112,18 +114,22 @@ export default function Column({ column, boardId, labels, isEditor, onCardClick 
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
                 <div className="absolute right-0 top-8 z-20 bg-white rounded-lg border border-gray-200 shadow-lg py-1 w-36">
-                  <button
-                    onClick={() => { setEditing(true); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <Pencil size={14} /> Rename
-                  </button>
-                  <button
-                    onClick={() => { handleDelete(); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    <Trash2 size={14} /> Delete
-                  </button>
+                  {canEditColumn && (
+                    <button
+                      onClick={() => { setEditing(true); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Pencil size={14} /> Rename
+                    </button>
+                  )}
+                  {canDeleteColumn && (
+                    <button
+                      onClick={() => { handleDelete(); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  )}
                 </div>
               </>
             )}

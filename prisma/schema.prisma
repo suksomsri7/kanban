@@ -361,6 +361,9 @@ model CustomRoleBoardAccess {
   canDeleteCard Boolean @default(false)
   canMoveCard   Boolean @default(false)
   canComment    Boolean @default(false)
+  canAddColumn  Boolean @default(false)
+  canEditColumn Boolean @default(false)
+  canDeleteColumn Boolean @default(false)
 
   allowedColumnIds Json @default("[]")
 
