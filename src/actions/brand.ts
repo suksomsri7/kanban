@@ -23,7 +23,7 @@ export async function getBrands() {
   const session = await requireAuth();
   const user = session.user as SessionUser;
 
-  if (user.role === "SUPER_ADMIN") {
+  if (user.role === "SUPER_ADMIN" || user.role === "ADMIN") {
     return prisma.brand.findMany({
       where: { isArchived: false },
       include: {
@@ -39,10 +39,27 @@ export async function getBrands() {
     });
   }
 
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { customRoleId: true },
+  });
+
+  const customRoleBrandIds = dbUser?.customRoleId
+    ? (await prisma.customRoleBoardAccess.findMany({
+        where: { customRoleId: dbUser.customRoleId, canView: true },
+        select: { board: { select: { brandId: true } } },
+      }))
+        .map((a) => a.board.brandId)
+        .filter((id): id is string => id !== null)
+    : [];
+
   return prisma.brand.findMany({
     where: {
       isArchived: false,
-      members: { some: { userId: user.id } },
+      OR: [
+        { members: { some: { userId: user.id } } },
+        ...(customRoleBrandIds.length > 0 ? [{ id: { in: customRoleBrandIds } }] : []),
+      ],
     },
     include: {
       owner: { select: { id: true, displayName: true, avatar: true } },
@@ -88,9 +105,24 @@ export async function getBrandById(brandId: string) {
 
   if (!brand) return null;
 
-  if (user.role !== "SUPER_ADMIN") {
+  if (user.role !== "SUPER_ADMIN" && user.role !== "ADMIN") {
     const isMember = brand.members.some((m) => m.userId === user.id);
-    if (!isMember) return null;
+    if (!isMember) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { customRoleId: true },
+      });
+      const hasCustomRoleAccess = dbUser?.customRoleId
+        ? await prisma.customRoleBoardAccess.findFirst({
+            where: {
+              customRoleId: dbUser.customRoleId,
+              canView: true,
+              board: { brandId },
+            },
+          })
+        : null;
+      if (!hasCustomRoleAccess) return null;
+    }
   }
 
   return brand;
