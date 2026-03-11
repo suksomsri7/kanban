@@ -60,7 +60,7 @@ export default function SettingsPage() {
     setBackupLoading(true);
     setBackupMsg("");
     try {
-      const res = await fetch("/api/backup");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/backup`);
       if (!res.ok) throw new Error("Backup failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -91,7 +91,7 @@ export default function SettingsPage() {
       const text = await file.text();
       const data = JSON.parse(text);
 
-      const res = await fetch("/api/restore", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/restore`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

@@ -57,7 +57,7 @@ export default function CardAttachments({
       formData.append("file", file);
       formData.append("cardId", cardId);
 
-      const res = await fetch("/api/upload", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/upload`, {
         method: "POST",
         body: formData,
       });

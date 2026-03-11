@@ -34,7 +34,7 @@ export default function NotificationBell() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await fetch("/api/notifications?limit=10");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/notifications?limit=10`);
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications);

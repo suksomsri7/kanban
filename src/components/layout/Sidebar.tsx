@@ -105,9 +105,9 @@ export default function Sidebar({ user, brands, menuPermissions, mobileOpen, onM
               <button
                 onClick={() => {
                   if (collapsed) {
-                    window.location.href = menuPermissions.canViewDashboard
+                    window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}${menuPermissions.canViewDashboard
                       ? brandBasePath
-                      : `${brandBasePath}/boards`;
+                      : `${brandBasePath}/boards`}`;
                   } else {
                     toggleBrand(brand.id);
                   }

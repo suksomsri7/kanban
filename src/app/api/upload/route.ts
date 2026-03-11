@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import * as ftp from "basic-ftp";
+import { uploadFile } from "@/lib/storage";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -23,29 +23,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
     }
 
-    const timestamp = Date.now();
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const remotePath = `/kanban/${cardId}/${timestamp}_${safeName}`;
-
     const buffer = Buffer.from(await file.arrayBuffer());
-
-    const client = new ftp.Client();
-    client.ftp.verbose = false;
-
-    await client.access({
-      host: process.env.BUNNY_STORAGE_HOSTNAME!,
-      user: process.env.BUNNY_STORAGE_USERNAME!,
-      password: process.env.BUNNY_STORAGE_PASSWORD!,
-      secure: false,
-    });
-
-    await client.ensureDir(`/kanban/${cardId}`);
-    const { Readable } = await import("stream");
-    const readableStream = Readable.from(buffer);
-    await client.uploadFrom(readableStream, remotePath);
-    client.close();
-
-    const fileUrl = `https://${process.env.BUNNY_STORAGE_USERNAME}.b-cdn.net${remotePath}`;
+    const fileUrl = await uploadFile(cardId, file.name, buffer);
 
     return NextResponse.json({
       success: true,

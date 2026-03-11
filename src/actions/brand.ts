@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth, requireSuperAdmin } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
+import { deleteBrandFiles } from "@/lib/storage";
 import type { SessionUser } from "@/types";
 
 const CreateBrandSchema = z.object({
@@ -195,54 +196,17 @@ export async function updateBrand(formData: FormData) {
 export async function deleteBrand(brandId: string) {
   await requireSuperAdmin();
 
-  const attachments = await prisma.attachment.findMany({
-    where: {
-      card: { column: { board: { brandId } } },
-    },
-    select: { fileUrl: true },
-  });
-
-  if (attachments.length > 0) {
-    try {
-      const ftp = await import("basic-ftp");
-      const client = new ftp.Client();
-      client.ftp.verbose = false;
-      await client.access({
-        host: process.env.BUNNY_STORAGE_HOSTNAME!,
-        user: process.env.BUNNY_STORAGE_USERNAME!,
-        password: process.env.BUNNY_STORAGE_PASSWORD!,
-        secure: false,
-      });
-
-      const cdnPrefix = `https://${process.env.BUNNY_STORAGE_USERNAME}.b-cdn.net`;
-      for (const att of attachments) {
-        try {
-          const remotePath = att.fileUrl.replace(cdnPrefix, "");
-          await client.remove(remotePath);
-        } catch {
-          // file may already be missing — continue
-        }
-      }
-
-      const boardIds = await prisma.board.findMany({
-        where: { brandId },
-        select: { id: true, columns: { select: { cards: { select: { id: true } } } } },
-      });
-      const cardIds = boardIds.flatMap((b) =>
-        b.columns.flatMap((c) => c.cards.map((card) => card.id))
-      );
-      for (const cardId of cardIds) {
-        try {
-          await client.removeDir(`/kanban/${cardId}`);
-        } catch {
-          // directory may not exist
-        }
-      }
-
-      client.close();
-    } catch (err) {
-      console.error("Bunny CDN cleanup error (non-fatal):", err);
-    }
+  try {
+    const boards = await prisma.board.findMany({
+      where: { brandId },
+      select: { columns: { select: { cards: { select: { id: true } } } } },
+    });
+    const cardIds = boards.flatMap((b) =>
+      b.columns.flatMap((c) => c.cards.map((card) => card.id))
+    );
+    await deleteBrandFiles(cardIds);
+  } catch (err) {
+    console.error("File cleanup error (non-fatal):", err);
   }
 
   await prisma.brand.delete({ where: { id: brandId } });

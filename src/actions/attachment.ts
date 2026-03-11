@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/actions/activity";
+import { deleteFile } from "@/lib/storage";
 import type { SessionUser } from "@/types";
 import { requireBoardPermission } from "@/lib/permissions";
 
@@ -47,8 +48,12 @@ export async function deleteAttachment(attachmentId: string, boardId: string) {
 
   const att = await prisma.attachment.findUnique({
     where: { id: attachmentId },
-    select: { fileName: true, cardId: true },
+    select: { fileName: true, fileUrl: true, cardId: true },
   });
+
+  if (att?.fileUrl) {
+    try { await deleteFile(att.fileUrl); } catch { /* silent */ }
+  }
 
   await prisma.attachment.delete({ where: { id: attachmentId } });
   await logActivity("ATTACHMENT_DELETED", boardId, user.id, { fileName: att?.fileName }, att?.cardId ?? undefined);

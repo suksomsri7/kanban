@@ -1,0 +1,384 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Kanban Board Agent API",
+    "version": "1.0.0",
+    "description": "REST API for AI agents to manage a Kanban board system — create, read, update, move cards, manage subtasks, comments, labels, and assignees."
+  },
+  "servers": [
+    { "url": "http://localhost:3000/kanban/api/v1", "description": "Local Docker" }
+  ],
+  "security": [{ "bearerAuth": [] }],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API key passed as Bearer token"
+      }
+    },
+    "schemas": {
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "enum": [true] },
+          "data": {}
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "enum": [false] },
+          "error": { "type": "string" }
+        }
+      },
+      "Priority": {
+        "type": "string",
+        "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"]
+      },
+      "CardCreate": {
+        "type": "object",
+        "required": ["title", "columnId"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "columnId": { "type": "string" },
+          "description": { "type": "string" },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "dueDate": { "type": "string", "format": "date", "nullable": true },
+          "labelIds": { "type": "array", "items": { "type": "string" } },
+          "assigneeIds": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "CardUpdate": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "description": { "type": "string", "nullable": true },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "dueDate": { "type": "string", "format": "date", "nullable": true }
+        }
+      },
+      "CardMove": {
+        "type": "object",
+        "required": ["columnId"],
+        "properties": {
+          "columnId": { "type": "string" },
+          "position": {
+            "oneOf": [
+              { "type": "string", "enum": ["top", "bottom"] },
+              { "type": "integer", "minimum": 0 }
+            ],
+            "default": "bottom"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/brands": {
+      "get": {
+        "summary": "List all brands",
+        "operationId": "listBrands",
+        "responses": {
+          "200": { "description": "Array of brands" }
+        }
+      }
+    },
+    "/boards": {
+      "get": {
+        "summary": "List all boards with columns and labels",
+        "operationId": "listBoards",
+        "responses": {
+          "200": { "description": "Array of boards with columns, labels, members" }
+        }
+      }
+    },
+    "/boards/{boardId}": {
+      "get": {
+        "summary": "Get full board detail with all cards",
+        "operationId": "getBoard",
+        "parameters": [
+          { "name": "boardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Board with columns, cards, labels, members" },
+          "404": { "description": "Board not found" }
+        }
+      }
+    },
+    "/cards": {
+      "get": {
+        "summary": "Search and list cards",
+        "operationId": "searchCards",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Search in title and description" },
+          { "name": "boardId", "in": "query", "schema": { "type": "string" }, "description": "Filter by board" },
+          { "name": "columnId", "in": "query", "schema": { "type": "string" }, "description": "Filter by column" },
+          { "name": "priority", "in": "query", "schema": { "$ref": "#/components/schemas/Priority" } },
+          { "name": "assigneeId", "in": "query", "schema": { "type": "string" }, "description": "Filter by assigned user" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 200 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Object with cards array, total, limit, offset" }
+        }
+      },
+      "post": {
+        "summary": "Create a new card",
+        "operationId": "createCard",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CardCreate" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Created card with relations" },
+          "400": { "description": "Validation error" },
+          "404": { "description": "Column not found" }
+        }
+      }
+    },
+    "/cards/{cardId}": {
+      "get": {
+        "summary": "Get full card detail",
+        "operationId": "getCard",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Card with all relations" },
+          "404": { "description": "Card not found" }
+        }
+      },
+      "patch": {
+        "summary": "Update card fields",
+        "operationId": "updateCard",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CardUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated card" },
+          "404": { "description": "Card not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a card permanently",
+        "operationId": "deleteCard",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted" },
+          "404": { "description": "Card not found" }
+        }
+      }
+    },
+    "/cards/{cardId}/move": {
+      "post": {
+        "summary": "Move card to another column",
+        "operationId": "moveCard",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CardMove" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Moved card" },
+          "404": { "description": "Card or column not found" }
+        }
+      }
+    },
+    "/cards/{cardId}/labels": {
+      "post": {
+        "summary": "Toggle label on card (add if missing, remove if present)",
+        "operationId": "toggleCardLabel",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["labelId"],
+                "properties": {
+                  "labelId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Toggle result with action: added/removed" }
+        }
+      }
+    },
+    "/cards/{cardId}/assignees": {
+      "post": {
+        "summary": "Toggle assignee on card (assign if not assigned, remove if assigned)",
+        "operationId": "toggleCardAssignee",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["userId"],
+                "properties": {
+                  "userId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Toggle result with action: added/removed" }
+        }
+      }
+    },
+    "/cards/{cardId}/comments": {
+      "get": {
+        "summary": "List all comments on a card",
+        "operationId": "listCardComments",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Array of comments" }
+        }
+      },
+      "post": {
+        "summary": "Add a comment to a card",
+        "operationId": "addCardComment",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content"],
+                "properties": {
+                  "content": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Created comment" },
+          "404": { "description": "Card not found" }
+        }
+      }
+    },
+    "/cards/{cardId}/subtasks": {
+      "get": {
+        "summary": "List all subtasks of a card",
+        "operationId": "listCardSubtasks",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Array of subtasks" }
+        }
+      },
+      "post": {
+        "summary": "Create a subtask on a card",
+        "operationId": "createSubtask",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Created subtask" },
+          "404": { "description": "Card not found" }
+        }
+      }
+    },
+    "/cards/{cardId}/subtasks/{subtaskId}": {
+      "patch": {
+        "summary": "Update subtask (title, completion status)",
+        "operationId": "updateSubtask",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "subtaskId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "isCompleted": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated subtask" },
+          "404": { "description": "Subtask not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a subtask",
+        "operationId": "deleteSubtask",
+        "parameters": [
+          { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "subtaskId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted" },
+          "404": { "description": "Subtask not found" }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "summary": "List all active users",
+        "operationId": "listUsers",
+        "responses": {
+          "200": { "description": "Array of users with id, username, displayName, role" }
+        }
+      }
+    }
+  }
+}

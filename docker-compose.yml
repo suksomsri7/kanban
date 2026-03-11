@@ -1,0 +1,72 @@
+services:
+  # ── PostgreSQL Database ──
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kanban
+      POSTGRES_USER: kanban
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kanban_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kanban -d kanban"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Soketi (Self-hosted Pusher replacement) ──
+  soketi:
+    image: quay.io/soketi/soketi:1.6-16-alpine
+    restart: unless-stopped
+    ports:
+      - "6001:6001"
+    environment:
+      SOKETI_DEFAULT_APP_ID: kanban-app
+      SOKETI_DEFAULT_APP_KEY: kanban-key
+      SOKETI_DEFAULT_APP_SECRET: kanban-secret
+      SOKETI_DEBUG: "0"
+
+  # ── Next.js Application ──
+  app:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_BASE_PATH: /kanban
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://kanban:${POSTGRES_PASSWORD:-kanban_secret}@db:5432/kanban
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-this-to-a-random-secret-at-least-32-chars}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000/kanban}
+      UPLOAD_DIR: /app/uploads
+
+      # Soketi (Pusher-compatible real-time) — server side
+      PUSHER_APP_ID: kanban-app
+      PUSHER_KEY: kanban-key
+      PUSHER_SECRET: kanban-secret
+      PUSHER_HOST: soketi
+      PUSHER_PORT: "6001"
+
+      # Soketi — client side (browser connects directly)
+      NEXT_PUBLIC_PUSHER_KEY: kanban-key
+      NEXT_PUBLIC_PUSHER_HOST: ${NEXT_PUBLIC_PUSHER_HOST:-localhost}
+      NEXT_PUBLIC_PUSHER_PORT: ${NEXT_PUBLIC_PUSHER_PORT:-6001}
+
+      # Agent API
+      API_KEY: ${API_KEY:-kanban-agent-secret-key-change-me}
+      API_AGENT_USERNAME: ${API_AGENT_USERNAME:-admin}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      soketi:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  uploads_data:

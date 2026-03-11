@@ -6,20 +6,28 @@ export function getPusher(): Pusher | null {
   if (
     !process.env.PUSHER_APP_ID ||
     !process.env.PUSHER_KEY ||
-    !process.env.PUSHER_SECRET ||
-    !process.env.PUSHER_CLUSTER
+    !process.env.PUSHER_SECRET
   ) {
     return null;
   }
 
   if (!pusherInstance) {
-    pusherInstance = new Pusher({
+    const options: ConstructorParameters<typeof Pusher>[0] = {
       appId: process.env.PUSHER_APP_ID,
       key: process.env.PUSHER_KEY,
       secret: process.env.PUSHER_SECRET,
-      cluster: process.env.PUSHER_CLUSTER,
-      useTLS: true,
-    });
+      useTLS: process.env.PUSHER_USE_TLS !== "false",
+    };
+
+    if (process.env.PUSHER_HOST) {
+      options.host = process.env.PUSHER_HOST;
+      options.port = process.env.PUSHER_PORT || "6001";
+      options.useTLS = false;
+    } else {
+      options.cluster = process.env.PUSHER_CLUSTER || "ap1";
+    }
+
+    pusherInstance = new Pusher(options);
   }
 
   return pusherInstance;

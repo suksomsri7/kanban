@@ -88,7 +88,7 @@ export default function ReportsClient({
   async function exportPDF() {
     setPdfLoading(true);
     try {
-      const res = await fetch("/api/export-pdf");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/export-pdf`);
       if (!res.ok) throw new Error("Failed to generate PDF");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
