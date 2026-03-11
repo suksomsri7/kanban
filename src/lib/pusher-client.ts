@@ -14,6 +14,7 @@ export function getPusherClient(): PusherClient | null {
 
     if (host) {
       pusherClient = new PusherClient(key, {
+        cluster: "mt1",
         wsHost: host,
         wsPort: port ? parseInt(port) : 6001,
         forceTLS: false,
