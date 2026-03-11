@@ -12,22 +12,24 @@ export function getPusher(): Pusher | null {
   }
 
   if (!pusherInstance) {
-    const options: ConstructorParameters<typeof Pusher>[0] = {
-      appId: process.env.PUSHER_APP_ID,
-      key: process.env.PUSHER_KEY,
-      secret: process.env.PUSHER_SECRET,
-      useTLS: process.env.PUSHER_USE_TLS !== "false",
-    };
-
     if (process.env.PUSHER_HOST) {
-      options.host = process.env.PUSHER_HOST;
-      options.port = process.env.PUSHER_PORT || "6001";
-      options.useTLS = false;
+      pusherInstance = new Pusher({
+        appId: process.env.PUSHER_APP_ID,
+        key: process.env.PUSHER_KEY,
+        secret: process.env.PUSHER_SECRET,
+        host: process.env.PUSHER_HOST,
+        port: process.env.PUSHER_PORT || "6001",
+        useTLS: false,
+      });
     } else {
-      options.cluster = process.env.PUSHER_CLUSTER || "ap1";
+      pusherInstance = new Pusher({
+        appId: process.env.PUSHER_APP_ID,
+        key: process.env.PUSHER_KEY,
+        secret: process.env.PUSHER_SECRET,
+        cluster: process.env.PUSHER_CLUSTER || "ap1",
+        useTLS: process.env.PUSHER_USE_TLS !== "false",
+      });
     }
-
-    pusherInstance = new Pusher(options);
   }
 
   return pusherInstance;
