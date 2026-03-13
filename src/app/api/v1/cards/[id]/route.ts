@@ -1,14 +1,16 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApi, jsonOk, jsonError } from "@/lib/api-auth";
+import { authenticateApi, requireScope, jsonOk, jsonError } from "@/lib/api-auth";
 import { logActivity } from "@/actions/activity";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await authenticateApi(req);
-  if (auth.error) return auth.error;
+  const result = await authenticateApi(req);
+  if (result.error) return result.error;
+  const scopeErr = requireScope(result.auth, "cards:read");
+  if (scopeErr) return scopeErr;
 
   const { id } = await params;
 
@@ -43,8 +45,10 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await authenticateApi(req);
-  if (auth.error) return auth.error;
+  const result = await authenticateApi(req);
+  if (result.error) return result.error;
+  const scopeErr = requireScope(result.auth, "cards:write");
+  if (scopeErr) return scopeErr;
 
   const { id } = await params;
 
@@ -96,7 +100,7 @@ export async function PATCH(
     },
   });
 
-  await logActivity("CARD_UPDATED", existing.column.boardId, auth.user.id, data, id);
+  await logActivity("CARD_UPDATED", existing.column.boardId, result.auth.user.id, data, id);
 
   return jsonOk(card);
 }
@@ -105,8 +109,10 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await authenticateApi(req);
-  if (auth.error) return auth.error;
+  const result = await authenticateApi(req);
+  if (result.error) return result.error;
+  const scopeErr = requireScope(result.auth, "cards:write");
+  if (scopeErr) return scopeErr;
 
   const { id } = await params;
 
@@ -116,7 +122,7 @@ export async function DELETE(
   });
   if (!card) return jsonError("Card not found", 404);
 
-  await logActivity("CARD_DELETED", card.column.boardId, auth.user.id, { title: card.title });
+  await logActivity("CARD_DELETED", card.column.boardId, result.auth.user.id, { title: card.title });
   await prisma.card.delete({ where: { id } });
 
   return jsonOk({ deleted: true });

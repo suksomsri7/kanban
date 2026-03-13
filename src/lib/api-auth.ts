@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import type { SessionUser } from "@/types";
+import { hashApiKey, type ApiKeyScope } from "@/lib/api-key";
 
 export interface ApiUser {
   id: string;
@@ -10,34 +10,132 @@ export interface ApiUser {
   avatar: string | null;
 }
 
+export interface ApiAuthResult {
+  user: ApiUser;
+  scopes: ApiKeyScope[] | "all";
+  apiKeyId?: string;
+}
+
 type AuthResult =
-  | { user: ApiUser; error?: never }
-  | { user?: never; error: NextResponse };
+  | { auth: ApiAuthResult; error?: never }
+  | { auth?: never; error: NextResponse };
 
 export async function authenticateApi(req: NextRequest): Promise<AuthResult> {
+  const xApiKey = req.headers.get("x-api-key");
+  if (xApiKey) {
+    return authenticateWithApiKey(xApiKey);
+  }
+
   const authHeader = req.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    return authenticateWithBearerToken(token);
+  }
+
+  return {
+    error: NextResponse.json(
+      { success: false, error: "Missing authentication. Use x-api-key header or Authorization: Bearer <key>" },
+      { status: 401 }
+    ),
+  };
+}
+
+async function authenticateWithApiKey(rawKey: string): Promise<AuthResult> {
+  const keyHash = hashApiKey(rawKey);
+
+  const apiKey = await prisma.apiKey.findUnique({
+    where: { keyHash },
+    include: {
+      user: {
+        select: { id: true, username: true, displayName: true, role: true, avatar: true, isActive: true },
+      },
+    },
+  });
+
+  if (!apiKey) {
     return {
       error: NextResponse.json(
-        { success: false, error: "Missing or invalid Authorization header. Use: Bearer <API_KEY>" },
+        { success: false, error: "Invalid API key" },
         { status: 401 }
       ),
     };
   }
 
-  const token = authHeader.slice(7);
-  const apiKey = process.env.API_KEY;
-
-  if (!apiKey) {
+  if (!apiKey.isActive) {
     return {
       error: NextResponse.json(
-        { success: false, error: "API_KEY not configured on the server" },
-        { status: 500 }
+        { success: false, error: "API key is disabled" },
+        { status: 403 }
       ),
     };
   }
 
-  if (token !== apiKey) {
+  if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
+    return {
+      error: NextResponse.json(
+        { success: false, error: "API key has expired" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  if (!apiKey.user.isActive) {
+    return {
+      error: NextResponse.json(
+        { success: false, error: "User account is disabled" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  prisma.apiKey.update({
+    where: { id: apiKey.id },
+    data: { lastUsedAt: new Date() },
+  }).catch(() => {});
+
+  const scopes = Array.isArray(apiKey.scopes) ? apiKey.scopes as ApiKeyScope[] : [];
+
+  return {
+    auth: {
+      user: {
+        id: apiKey.user.id,
+        username: apiKey.user.username,
+        displayName: apiKey.user.displayName,
+        role: apiKey.user.role as ApiUser["role"],
+        avatar: apiKey.user.avatar,
+      },
+      scopes,
+      apiKeyId: apiKey.id,
+    },
+  };
+}
+
+async function authenticateWithBearerToken(token: string): Promise<AuthResult> {
+  const keyHash = hashApiKey(token);
+  const apiKey = await prisma.apiKey.findUnique({
+    where: { keyHash },
+    include: {
+      user: {
+        select: { id: true, username: true, displayName: true, role: true, avatar: true, isActive: true },
+      },
+    },
+  });
+
+  if (apiKey) {
+    return authenticateWithApiKey(token);
+  }
+
+  const envApiKey = process.env.API_KEY;
+  if (!envApiKey) {
+    return {
+      error: NextResponse.json(
+        { success: false, error: "Invalid API key" },
+        { status: 401 }
+      ),
+    };
+  }
+
+  if (token !== envApiKey) {
     return {
       error: NextResponse.json(
         { success: false, error: "Invalid API key" },
@@ -61,7 +159,21 @@ export async function authenticateApi(req: NextRequest): Promise<AuthResult> {
     };
   }
 
-  return { user: user as ApiUser };
+  return {
+    auth: {
+      user: user as ApiUser,
+      scopes: "all",
+    },
+  };
+}
+
+export function requireScope(auth: ApiAuthResult, scope: ApiKeyScope): NextResponse | null {
+  if (auth.scopes === "all") return null;
+  if (auth.scopes.includes(scope)) return null;
+  return NextResponse.json(
+    { success: false, error: `Insufficient permissions. Required scope: ${scope}` },
+    { status: 403 }
+  );
 }
 
 export function jsonOk(data: unknown) {

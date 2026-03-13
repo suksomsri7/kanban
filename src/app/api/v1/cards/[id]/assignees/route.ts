@@ -1,14 +1,16 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApi, jsonOk, jsonError } from "@/lib/api-auth";
+import { authenticateApi, requireScope, jsonOk, jsonError } from "@/lib/api-auth";
 import { logActivity } from "@/actions/activity";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await authenticateApi(req);
-  if (auth.error) return auth.error;
+  const result = await authenticateApi(req);
+  if (result.error) return result.error;
+  const scopeErr = requireScope(result.auth, "cards:write");
+  if (scopeErr) return scopeErr;
 
   const { id: cardId } = await params;
 
@@ -37,11 +39,11 @@ export async function POST(
 
   if (existing) {
     await prisma.cardAssignee.delete({ where: { id: existing.id } });
-    await logActivity("CARD_UNASSIGNED", card.column.boardId, auth.user.id, { userId }, cardId);
+    await logActivity("CARD_UNASSIGNED", card.column.boardId, result.auth.user.id, { userId }, cardId);
     return jsonOk({ action: "removed", cardId, userId });
   }
 
   await prisma.cardAssignee.create({ data: { cardId, userId } });
-  await logActivity("CARD_ASSIGNED", card.column.boardId, auth.user.id, { userId }, cardId);
+  await logActivity("CARD_ASSIGNED", card.column.boardId, result.auth.user.id, { userId }, cardId);
   return jsonOk({ action: "added", cardId, userId });
 }

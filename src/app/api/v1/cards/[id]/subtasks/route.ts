@@ -1,14 +1,16 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApi, jsonOk, jsonError } from "@/lib/api-auth";
+import { authenticateApi, requireScope, jsonOk, jsonError } from "@/lib/api-auth";
 import { generateKeyBetween } from "fractional-indexing";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await authenticateApi(req);
-  if (auth.error) return auth.error;
+  const result = await authenticateApi(req);
+  if (result.error) return result.error;
+  const scopeErr = requireScope(result.auth, "subtasks:write");
+  if (scopeErr) return scopeErr;
 
   const { id: cardId } = await params;
 
@@ -44,8 +46,10 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await authenticateApi(req);
-  if (auth.error) return auth.error;
+  const result = await authenticateApi(req);
+  if (result.error) return result.error;
+  const scopeErr = requireScope(result.auth, "subtasks:read");
+  if (scopeErr) return scopeErr;
 
   const { id: cardId } = await params;
 

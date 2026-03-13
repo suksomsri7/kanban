@@ -16,6 +16,7 @@ import {
   Shield,
   Plus,
   ClipboardList,
+  KeyRound,
 } from "lucide-react";
 import { useState } from "react";
 import type { SessionUser } from "@/types";
@@ -211,6 +212,7 @@ export default function Sidebar({ user, brands, menuPermissions, mobileOpen, onM
             {[
               { name: "Users", href: "/admin/users", icon: Users },
               { name: "Roles", href: "/admin/roles", icon: Shield },
+              { name: "API Keys", href: "/admin/api-keys", icon: KeyRound },
               { name: "Settings", href: "/settings", icon: Settings },
             ].map((item) => {
               const isActive = pathname.startsWith(item.href);

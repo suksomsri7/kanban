@@ -1,13 +1,15 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApi, jsonOk, jsonError } from "@/lib/api-auth";
+import { authenticateApi, requireScope, jsonOk, jsonError } from "@/lib/api-auth";
 import { generateKeyBetween } from "fractional-indexing";
 import { logActivity } from "@/actions/activity";
 import { triggerBoardEvent } from "@/lib/pusher-server";
 
 export async function POST(req: NextRequest) {
-  const auth = await authenticateApi(req);
-  if (auth.error) return auth.error;
+  const result = await authenticateApi(req);
+  if (result.error) return result.error;
+  const scopeErr = requireScope(result.auth, "cards:write");
+  if (scopeErr) return scopeErr;
 
   let body: Record<string, unknown>;
   try {
@@ -80,7 +82,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  await logActivity("CARD_CREATED", column.boardId, auth.user.id, { title: card.title }, card.id);
+  await logActivity("CARD_CREATED", column.boardId, result.auth.user.id, { title: card.title }, card.id);
   triggerBoardEvent(column.boardId, "card-created", { cardId: card.id });
 
   const fullCard = await prisma.card.findUnique({
@@ -97,8 +99,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await authenticateApi(req);
-  if (auth.error) return auth.error;
+  const result = await authenticateApi(req);
+  if (result.error) return result.error;
+  const scopeErr = requireScope(result.auth, "cards:read");
+  if (scopeErr) return scopeErr;
 
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q");

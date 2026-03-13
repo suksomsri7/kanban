@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApi, jsonOk, jsonError } from "@/lib/api-auth";
+import { authenticateApi, requireScope, jsonOk, jsonError } from "@/lib/api-auth";
 import { generateKeyBetween } from "fractional-indexing";
 import { logActivity } from "@/actions/activity";
 import { triggerBoardEvent } from "@/lib/pusher-server";
@@ -9,8 +9,10 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await authenticateApi(req);
-  if (auth.error) return auth.error;
+  const result = await authenticateApi(req);
+  if (result.error) return result.error;
+  const scopeErr = requireScope(result.auth, "cards:move");
+  if (scopeErr) return scopeErr;
 
   const { id } = await params;
 
@@ -71,7 +73,7 @@ export async function POST(
     },
   });
 
-  await logActivity("CARD_MOVED", card.column.boardId, auth.user.id, { columnId }, id);
+  await logActivity("CARD_MOVED", card.column.boardId, result.auth.user.id, { columnId }, id);
   triggerBoardEvent(card.column.boardId, "card-moved", { cardId: id, columnId });
 
   return jsonOk(updated);
