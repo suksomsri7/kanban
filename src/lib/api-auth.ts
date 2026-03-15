@@ -22,16 +22,32 @@ type AuthResult =
 
 export async function authenticateApi(req: NextRequest): Promise<AuthResult> {
   const xApiKey = req.headers.get("x-api-key");
+  const authHeader = req.headers.get("authorization");
+
+  // #region agent log — debug auth flow
+  console.error(`[DEBUG-fcb7c3] authenticateApi: x-api-key=${xApiKey ? 'present' : 'absent'}, authorization=${authHeader ? authHeader.slice(0, 15) + '...' : 'absent'}`);
+  // #endregion
+
   if (xApiKey) {
-    return authenticateWithApiKey(xApiKey);
+    const result = await authenticateWithApiKey(xApiKey);
+    // #region agent log
+    console.error(`[DEBUG-fcb7c3] authenticateWithApiKey result: ${result.error ? 'ERROR ' + result.error.status : 'OK user=' + result.auth?.user.username}`);
+    // #endregion
+    return result;
   }
 
-  const authHeader = req.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
-    return authenticateWithBearerToken(token);
+    const result = await authenticateWithBearerToken(token);
+    // #region agent log
+    console.error(`[DEBUG-fcb7c3] authenticateWithBearerToken result: ${result.error ? 'ERROR' : 'OK user=' + result.auth?.user.username + ' scopes=' + result.auth?.scopes}`);
+    // #endregion
+    return result;
   }
 
+  // #region agent log
+  console.error('[DEBUG-fcb7c3] authenticateApi: no auth header found');
+  // #endregion
   return {
     error: NextResponse.json(
       { success: false, error: "Missing authentication. Use x-api-key header or Authorization: Bearer <key>" },
@@ -111,6 +127,10 @@ async function authenticateWithApiKey(rawKey: string): Promise<AuthResult> {
 }
 
 async function authenticateWithBearerToken(token: string): Promise<AuthResult> {
+  // #region agent log
+  console.error(`[DEBUG-fcb7c3] authenticateWithBearerToken: checking DB for hashed token...`);
+  // #endregion
+
   const keyHash = hashApiKey(token);
   const apiKey = await prisma.apiKey.findUnique({
     where: { keyHash },
@@ -121,11 +141,19 @@ async function authenticateWithBearerToken(token: string): Promise<AuthResult> {
     },
   });
 
+  // #region agent log
+  console.error(`[DEBUG-fcb7c3] authenticateWithBearerToken: DB lookup result=${apiKey ? 'FOUND key=' + apiKey.id : 'NOT_FOUND'}`);
+  // #endregion
+
   if (apiKey) {
     return authenticateWithApiKey(token);
   }
 
   const envApiKey = process.env.API_KEY;
+  // #region agent log
+  console.error(`[DEBUG-fcb7c3] authenticateWithBearerToken: envApiKey=${envApiKey ? 'SET(len=' + envApiKey.length + ')' : 'UNDEFINED'}, tokenMatch=${token === envApiKey}`);
+  // #endregion
+
   if (!envApiKey) {
     return {
       error: NextResponse.json(
@@ -145,10 +173,18 @@ async function authenticateWithBearerToken(token: string): Promise<AuthResult> {
   }
 
   const agentUsername = process.env.API_AGENT_USERNAME || "admin";
+  // #region agent log
+  console.error(`[DEBUG-fcb7c3] authenticateWithBearerToken: envKey matched! looking up user="${agentUsername}"`);
+  // #endregion
+
   const user = await prisma.user.findUnique({
     where: { username: agentUsername },
     select: { id: true, username: true, displayName: true, role: true, avatar: true },
   });
+
+  // #region agent log
+  console.error(`[DEBUG-fcb7c3] authenticateWithBearerToken: user lookup=${user ? 'FOUND ' + user.username : 'NOT_FOUND'}`);
+  // #endregion
 
   if (!user) {
     return {
