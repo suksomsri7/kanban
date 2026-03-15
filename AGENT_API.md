@@ -1,20 +1,76 @@
-# Kanban Board — Agent API Documentation
+# Kanban Board — API Documentation
 
-> REST API for AI Agents to manage the Kanban board system.
-> Base URL: `http://<HOST>:3000/kanban/api/v1`
+> REST API for external integrations (n8n, Zapier, Make, custom scripts, AI agents).
+> Base URL: `https://<YOUR_DOMAIN>/api/v1`
 
 ---
 
 ## Authentication
 
-All requests require an API key via the `Authorization` header:
+The API supports **two authentication methods**. Both are stateless — no login/session required.
+
+### Method 1: Per-User API Key (Recommended)
+
+Created and managed via the Admin UI (`/admin/api-keys`). Each key is scoped to a specific user and has granular permissions.
+
+```
+x-api-key: kbn_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Example:**
+```bash
+curl -H "x-api-key: kbn_abc123..." https://kanban.example.com/api/v1/boards
+```
+
+### Method 2: Legacy Bearer Token
+
+Uses the server-wide `API_KEY` environment variable. All operations run as the user specified by `API_AGENT_USERNAME`.
 
 ```
 Authorization: Bearer <API_KEY>
 ```
 
-The API key is configured in the server's `API_KEY` environment variable.
-Operations are performed as the user specified by `API_AGENT_USERNAME` (default: `admin`).
+**Example:**
+```bash
+curl -H "Authorization: Bearer my-secret-key" https://kanban.example.com/api/v1/boards
+```
+
+> **Note:** Per-user API keys also work with the `Authorization: Bearer` header. The system checks the database first, then falls back to the env variable.
+
+---
+
+## API Key Scopes (Permissions)
+
+Per-user API keys are restricted by scopes. Each endpoint requires a specific scope. If a key lacks the required scope, the API returns `403 Forbidden`.
+
+| Scope | Grants Access To |
+|-------|-----------------|
+| `boards:read` | List boards, get board detail |
+| `brands:read` | List brands |
+| `users:read` | List users |
+| `cards:read` | List/search cards, get card detail |
+| `cards:write` | Create, update, delete cards; toggle labels/assignees |
+| `cards:move` | Move cards between columns |
+| `comments:read` | List comments |
+| `comments:write` | Create comments |
+| `subtasks:read` | List subtasks |
+| `subtasks:write` | Create, update, delete subtasks |
+
+Legacy Bearer token (env-based) has **all** scopes automatically.
+
+---
+
+## Managing API Keys
+
+1. Login as **SUPER_ADMIN**
+2. Go to **Administration → API Keys** (`/admin/api-keys`)
+3. Click **Create API Key**:
+   - Give it a name (e.g., "n8n Integration")
+   - Select the **owner user** (actions are performed as this user)
+   - Check the **permission scopes** needed
+   - Optionally set an **expiration date**
+4. **Copy the key immediately** — it is shown only once
+5. You can **enable/disable**, **edit scopes**, or **delete** keys at any time
 
 ---
 
@@ -50,71 +106,120 @@ Brand → Board → Column → Card
 - **Column** — A lane in a board (e.g. "To Do", "In Progress", "Done")
 - **Card** — A task with title, description, priority, due date, labels, assignees, subtasks, comments, attachments
 
-### Priority: `LOW` | `MEDIUM` | `HIGH` | `URGENT`
-### Roles: `SUPER_ADMIN` | `ADMIN` | `USER` | `GUEST`
+### Enums
+- **Priority:** `LOW` | `MEDIUM` | `HIGH` | `URGENT`
+- **Roles:** `SUPER_ADMIN` | `ADMIN` | `USER` | `GUEST`
 
 ---
 
 ## Endpoints
 
+### 0. Current User / Key Info
+```
+GET /api/v1/me
+```
+**Scope:** None required
+
+Returns the authenticated user, scopes, and API key ID. Useful for verifying your key works.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "clx...",
+      "username": "sharky",
+      "displayName": "Sharky",
+      "role": "ADMIN",
+      "avatar": null
+    },
+    "scopes": ["boards:read", "cards:read", "cards:write", ...],
+    "apiKeyId": "cmm..."
+  }
+}
+```
+
+---
+
 ### 1. List Brands
 ```
-GET /kanban/api/v1/brands
+GET /api/v1/brands
 ```
+**Scope:** `brands:read`
+
 Returns all active brands with owners, members, board count.
+
+---
 
 ### 2. List Boards
 ```
-GET /kanban/api/v1/boards
+GET /api/v1/boards
 ```
+**Scope:** `boards:read`
+
 Returns all boards with columns (id, title), labels (id, name, color), members.
+
+---
 
 ### 3. Get Board Detail
 ```
-GET /kanban/api/v1/boards/{boardId}
+GET /api/v1/boards/{boardId}
 ```
+**Scope:** `boards:read`
+
 Full board with all columns → cards → assignees, labels, subtasks, counts.
+
+---
 
 ### 4. Search / List Cards
 ```
-GET /kanban/api/v1/cards?q=&boardId=&columnId=&priority=&assigneeId=&limit=50&offset=0
+GET /api/v1/cards?q=&boardId=&columnId=&priority=&assigneeId=&limit=50&offset=0
 ```
+**Scope:** `cards:read`
 
-| Param        | Type   | Description                              |
-|--------------|--------|------------------------------------------|
-| `q`          | string | Search title & description               |
-| `boardId`    | string | Filter by board                          |
-| `columnId`   | string | Filter by column                         |
-| `priority`   | string | LOW / MEDIUM / HIGH / URGENT             |
-| `assigneeId` | string | Filter by assigned user                  |
-| `limit`      | number | Max results (default 50, max 200)        |
-| `offset`     | number | Skip N results                           |
+| Param | Type | Description |
+|-------|------|-------------|
+| `q` | string | Search title & description |
+| `boardId` | string | Filter by board |
+| `columnId` | string | Filter by column |
+| `priority` | string | LOW / MEDIUM / HIGH / URGENT |
+| `assigneeId` | string | Filter by assigned user |
+| `limit` | number | Max results (default 50, max 200) |
+| `offset` | number | Skip N results |
 
 Response: `{ cards: [...], total, limit, offset }`
 
+---
+
 ### 5. Get Card Detail
 ```
-GET /kanban/api/v1/cards/{cardId}
+GET /api/v1/cards/{cardId}
 ```
+**Scope:** `cards:read`
+
 Full card with column, assignees, labels, comments, attachments, subtasks, dependencies.
+
+---
 
 ### 6. Create Card
 ```
-POST /kanban/api/v1/cards
+POST /api/v1/cards
 Content-Type: application/json
 ```
+**Scope:** `cards:write`
 
-| Field         | Type     | Required | Description                          |
-|---------------|----------|----------|--------------------------------------|
-| `title`       | string   | YES      | Card title (1-200 chars)             |
-| `columnId`    | string   | YES      | Target column ID                     |
-| `description` | string   | no       | Markdown description                 |
-| `priority`    | string   | no       | LOW / MEDIUM / HIGH / URGENT         |
-| `dueDate`     | string   | no       | ISO date: "2026-03-20"              |
-| `labelIds`    | string[] | no       | Array of label IDs to attach         |
-| `assigneeIds` | string[] | no       | Array of user IDs to assign          |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | YES | Card title (1-200 chars) |
+| `columnId` | string | YES | Target column ID |
+| `description` | string | no | Markdown description |
+| `priority` | string | no | LOW / MEDIUM / HIGH / URGENT |
+| `dueDate` | string | no | ISO date: "2026-03-20" |
+| `labelIds` | string[] | no | Array of label IDs to attach |
+| `assigneeIds` | string[] | no | Array of user IDs to assign |
 
-Example:
+**Example:**
 ```json
 {
   "title": "Implement login page",
@@ -126,137 +231,280 @@ Example:
 }
 ```
 
+---
+
 ### 7. Update Card
 ```
-PATCH /kanban/api/v1/cards/{cardId}
+PATCH /api/v1/cards/{cardId}
 Content-Type: application/json
 ```
+**Scope:** `cards:write`
 
 Only include fields you want to change:
 
-| Field         | Type          | Description                      |
-|---------------|---------------|----------------------------------|
-| `title`       | string        | New title                        |
-| `description` | string / null | New description (null to clear)  |
-| `priority`    | string        | LOW / MEDIUM / HIGH / URGENT     |
-| `dueDate`     | string / null | ISO date (null to clear)         |
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | New title |
+| `description` | string / null | New description (null to clear) |
+| `priority` | string | LOW / MEDIUM / HIGH / URGENT |
+| `dueDate` | string / null | ISO date (null to clear) |
+
+---
 
 ### 8. Delete Card
 ```
-DELETE /kanban/api/v1/cards/{cardId}
+DELETE /api/v1/cards/{cardId}
 ```
+**Scope:** `cards:write`
+
+---
 
 ### 9. Move Card to Column
 ```
-POST /kanban/api/v1/cards/{cardId}/move
+POST /api/v1/cards/{cardId}/move
 Content-Type: application/json
 ```
+**Scope:** `cards:move`
 
-| Field      | Type                        | Required | Description                     |
-|------------|-----------------------------|----------|---------------------------------|
-| `columnId` | string                      | YES      | Target column (same board)      |
-| `position` | "top" / "bottom" / number   | no       | Position (default: bottom)      |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `columnId` | string | YES | Target column (same board only) |
+| `position` | "top" / "bottom" / number | no | Position (default: bottom) |
+
+---
 
 ### 10. Toggle Label on Card
 ```
-POST /kanban/api/v1/cards/{cardId}/labels
+POST /api/v1/cards/{cardId}/labels
 ```
+**Scope:** `cards:write`
+
 Body: `{ "labelId": "..." }` — Adds if missing, removes if present.
 Response: `{ action: "added" | "removed" }`
 
+---
+
 ### 11. Toggle Assignee on Card
 ```
-POST /kanban/api/v1/cards/{cardId}/assignees
+POST /api/v1/cards/{cardId}/assignees
 ```
+**Scope:** `cards:write`
+
 Body: `{ "userId": "..." }` — Assigns if not assigned, removes if assigned.
 Response: `{ action: "added" | "removed" }`
 
+---
+
 ### 12. Add Comment
 ```
-POST /kanban/api/v1/cards/{cardId}/comments
+POST /api/v1/cards/{cardId}/comments
 ```
+**Scope:** `comments:write`
+
 Body: `{ "content": "..." }`
+
+---
 
 ### 13. List Comments
 ```
-GET /kanban/api/v1/cards/{cardId}/comments
+GET /api/v1/cards/{cardId}/comments
 ```
+**Scope:** `comments:read`
+
+---
 
 ### 14. Create Subtask
 ```
-POST /kanban/api/v1/cards/{cardId}/subtasks
+POST /api/v1/cards/{cardId}/subtasks
 ```
+**Scope:** `subtasks:write`
+
 Body: `{ "title": "..." }`
+
+---
 
 ### 15. List Subtasks
 ```
-GET /kanban/api/v1/cards/{cardId}/subtasks
+GET /api/v1/cards/{cardId}/subtasks
 ```
+**Scope:** `subtasks:read`
+
+---
 
 ### 16. Update Subtask
 ```
-PATCH /kanban/api/v1/cards/{cardId}/subtasks/{subtaskId}
+PATCH /api/v1/cards/{cardId}/subtasks/{subtaskId}
 ```
+**Scope:** `subtasks:write`
+
 Body: `{ "title": "...", "isCompleted": true }`
+
+---
 
 ### 17. Delete Subtask
 ```
-DELETE /kanban/api/v1/cards/{cardId}/subtasks/{subtaskId}
+DELETE /api/v1/cards/{cardId}/subtasks/{subtaskId}
 ```
+**Scope:** `subtasks:write`
+
+---
 
 ### 18. List Users
 ```
-GET /kanban/api/v1/users
+GET /api/v1/users
 ```
+**Scope:** `users:read`
+
 Returns all active users (id, username, displayName, role).
 
 ---
 
 ## Quick Reference
 
-| Action              | Method   | Path                                             |
-|---------------------|----------|--------------------------------------------------|
-| List brands         | `GET`    | `/kanban/api/v1/brands`                          |
-| List boards         | `GET`    | `/kanban/api/v1/boards`                          |
-| Board detail        | `GET`    | `/kanban/api/v1/boards/{id}`                     |
-| Search cards        | `GET`    | `/kanban/api/v1/cards?q=&boardId=`               |
-| Card detail         | `GET`    | `/kanban/api/v1/cards/{id}`                      |
-| Create card         | `POST`   | `/kanban/api/v1/cards`                           |
-| Update card         | `PATCH`  | `/kanban/api/v1/cards/{id}`                      |
-| Delete card         | `DELETE` | `/kanban/api/v1/cards/{id}`                      |
-| Move card           | `POST`   | `/kanban/api/v1/cards/{id}/move`                 |
-| Toggle label        | `POST`   | `/kanban/api/v1/cards/{id}/labels`               |
-| Toggle assignee     | `POST`   | `/kanban/api/v1/cards/{id}/assignees`            |
-| Add comment         | `POST`   | `/kanban/api/v1/cards/{id}/comments`             |
-| List comments       | `GET`    | `/kanban/api/v1/cards/{id}/comments`             |
-| Create subtask      | `POST`   | `/kanban/api/v1/cards/{id}/subtasks`             |
-| List subtasks       | `GET`    | `/kanban/api/v1/cards/{id}/subtasks`             |
-| Update subtask      | `PATCH`  | `/kanban/api/v1/cards/{id}/subtasks/{subtaskId}` |
-| Delete subtask      | `DELETE` | `/kanban/api/v1/cards/{id}/subtasks/{subtaskId}` |
-| List users          | `GET`    | `/kanban/api/v1/users`                           |
+| Action | Method | Path | Scope |
+|--------|--------|------|-------|
+| Current user/key | `GET` | `/api/v1/me` | — |
+| List brands | `GET` | `/api/v1/brands` | `brands:read` |
+| List boards | `GET` | `/api/v1/boards` | `boards:read` |
+| Board detail | `GET` | `/api/v1/boards/{id}` | `boards:read` |
+| Search cards | `GET` | `/api/v1/cards?q=&boardId=` | `cards:read` |
+| Card detail | `GET` | `/api/v1/cards/{id}` | `cards:read` |
+| Create card | `POST` | `/api/v1/cards` | `cards:write` |
+| Update card | `PATCH` | `/api/v1/cards/{id}` | `cards:write` |
+| Delete card | `DELETE` | `/api/v1/cards/{id}` | `cards:write` |
+| Move card | `POST` | `/api/v1/cards/{id}/move` | `cards:move` |
+| Toggle label | `POST` | `/api/v1/cards/{id}/labels` | `cards:write` |
+| Toggle assignee | `POST` | `/api/v1/cards/{id}/assignees` | `cards:write` |
+| Add comment | `POST` | `/api/v1/cards/{id}/comments` | `comments:write` |
+| List comments | `GET` | `/api/v1/cards/{id}/comments` | `comments:read` |
+| Create subtask | `POST` | `/api/v1/cards/{id}/subtasks` | `subtasks:write` |
+| List subtasks | `GET` | `/api/v1/cards/{id}/subtasks` | `subtasks:read` |
+| Update subtask | `PATCH` | `/api/v1/cards/{id}/subtasks/{sid}` | `subtasks:write` |
+| Delete subtask | `DELETE` | `/api/v1/cards/{id}/subtasks/{sid}` | `subtasks:write` |
+| List users | `GET` | `/api/v1/users` | `users:read` |
 
 ---
 
 ## Typical Workflow
 
 ```
-1. GET /kanban/api/v1/boards          → list boards, get column IDs & label IDs
-2. GET /kanban/api/v1/users           → list users, get user IDs
-3. GET /kanban/api/v1/boards/{id}     → see all cards in a board
-4. POST /kanban/api/v1/cards          → create card with title, columnId, etc.
-5. PATCH /kanban/api/v1/cards/{id}    → update priority, description, dueDate
-6. POST /kanban/api/v1/cards/{id}/move → move to "Done" column
-7. POST /kanban/api/v1/cards/{id}/comments → leave a note
+1. GET /api/v1/me               → verify key works, check scopes
+2. GET /api/v1/boards            → list boards, get column IDs & label IDs
+3. GET /api/v1/users             → list users, get user IDs
+4. GET /api/v1/boards/{id}       → see all cards in a board
+5. POST /api/v1/cards            → create card with title, columnId, etc.
+6. PATCH /api/v1/cards/{id}      → update priority, description, dueDate
+7. POST /api/v1/cards/{id}/move  → move to "Done" column
+8. POST /api/v1/cards/{id}/comments → leave a note
+```
+
+---
+
+## Integration Examples
+
+### n8n / Zapier / Make
+
+Use the **HTTP Request** node with:
+- **URL:** `https://kanban.example.com/api/v1/cards`
+- **Method:** `POST`
+- **Headers:** `x-api-key: kbn_your_key_here`
+- **Body (JSON):**
+```json
+{
+  "title": "New task from webhook",
+  "columnId": "your_column_id",
+  "priority": "HIGH"
+}
+```
+
+### cURL
+
+```bash
+# Verify your key
+curl -H "x-api-key: kbn_your_key" \
+  https://kanban.example.com/api/v1/me
+
+# List all boards
+curl -H "x-api-key: kbn_your_key" \
+  https://kanban.example.com/api/v1/boards
+
+# Create a card
+curl -X POST \
+  -H "x-api-key: kbn_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Deploy v2.0","columnId":"col_id","priority":"URGENT"}' \
+  https://kanban.example.com/api/v1/cards
+```
+
+### Python
+
+```python
+import requests
+
+BASE = "https://kanban.example.com/api/v1"
+HEADERS = {"x-api-key": "kbn_your_key_here"}
+
+# List boards
+boards = requests.get(f"{BASE}/boards", headers=HEADERS).json()
+
+# Create card
+card = requests.post(f"{BASE}/cards", headers=HEADERS, json={
+    "title": "Automated task",
+    "columnId": "your_column_id",
+    "priority": "MEDIUM",
+}).json()
+```
+
+### JavaScript / Node.js
+
+```javascript
+const BASE = "https://kanban.example.com/api/v1";
+const headers = { "x-api-key": "kbn_your_key_here" };
+
+// List boards
+const boards = await fetch(`${BASE}/boards`, { headers }).then(r => r.json());
+
+// Create card
+const card = await fetch(`${BASE}/cards`, {
+  method: "POST",
+  headers: { ...headers, "Content-Type": "application/json" },
+  body: JSON.stringify({
+    title: "Automated task",
+    columnId: "your_column_id",
+    priority: "MEDIUM",
+  }),
+}).then(r => r.json());
 ```
 
 ---
 
 ## Error Codes
 
-| HTTP | Meaning                    |
-|------|----------------------------|
-| 200  | Success                    |
-| 400  | Bad request / validation   |
-| 401  | Unauthorized (bad API key) |
-| 404  | Resource not found         |
-| 500  | Server error               |
+| HTTP | Meaning |
+|------|---------|
+| 200 | Success |
+| 400 | Bad request / validation error |
+| 401 | Unauthorized — invalid or missing API key |
+| 403 | Forbidden — key is disabled, expired, or missing required scope |
+| 404 | Resource not found |
+| 500 | Server error |
+
+### Common 403 Responses
+
+```json
+{"success": false, "error": "Insufficient permissions. Required scope: boards:read"}
+{"success": false, "error": "API key is disabled"}
+{"success": false, "error": "API key has expired"}
+{"success": false, "error": "User account is disabled"}
+```
+
+---
+
+## Security Notes
+
+- API keys are **hashed with SHA-256** before storage — raw keys are never saved
+- Keys are shown **only once** at creation — store them securely
+- Use the **minimum scopes** necessary for each integration
+- Set **expiration dates** for temporary integrations
+- **Disable or delete** keys that are no longer needed
+- Keys inherit the **user's identity** — activity logs show which user performed each action
