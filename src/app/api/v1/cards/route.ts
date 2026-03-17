@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     return jsonError("Invalid JSON body");
   }
 
-  const { title, columnId, description, priority, dueDate, labelIds, assigneeIds } = body as {
+  const { title, columnId, description, priority, dueDate, labelIds, assigneeIds, subtasks: subtaskTitles } = body as {
     title?: string;
     columnId?: string;
     description?: string;
@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
     dueDate?: string | null;
     labelIds?: string[];
     assigneeIds?: string[];
+    subtasks?: string[] | { title: string }[];
   };
 
   if (!title?.trim()) return jsonError("title is required");
@@ -79,6 +80,20 @@ export async function POST(req: NextRequest) {
       await prisma.cardAssignee.createMany({
         data: validUsers.map((u) => ({ cardId: card.id, userId: u.id })),
       });
+    }
+  }
+
+  if (subtaskTitles && Array.isArray(subtaskTitles) && subtaskTitles.length > 0) {
+    const titles = subtaskTitles.map((s) => (typeof s === "string" ? s : s?.title)).filter((t): t is string => !!t?.trim());
+    if (titles.length > 0) {
+      let prevOrder: string | null = null;
+      for (const t of titles) {
+        const order = generateKeyBetween(prevOrder, null);
+        await prisma.subtask.create({
+          data: { title: t.trim(), cardId: card.id, order },
+        });
+        prevOrder = order;
+      }
     }
   }
 
