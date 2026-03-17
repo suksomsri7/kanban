@@ -18,7 +18,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { generateKeyBetween } from "fractional-indexing";
-import { ArrowLeft, Activity, Pencil, Check, X, FileText, Palette, Kanban } from "lucide-react";
+import { ArrowLeft, Activity, Pencil, Check, X, FileText, Palette, Kanban, CalendarDays, List } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Column from "@/components/column/Column";
@@ -27,6 +27,8 @@ import AddColumn from "@/components/column/AddColumn";
 import CardModal from "@/components/card/CardModal";
 import ActivityPanel from "./ActivityPanel";
 import BoardFilter, { emptyFilter, type FilterState } from "./BoardFilter";
+import CalendarView from "./CalendarView";
+import ListView from "./ListView";
 import { reorderCards } from "@/actions/card";
 import { reorderColumns } from "@/actions/column";
 import { updateBoard } from "@/actions/board";
@@ -34,10 +36,12 @@ import type { SessionUser } from "@/types";
 import type { UserBoardPermissions } from "@/lib/permissions";
 import { useBoardRealtime } from "@/hooks/useRealtime";
 
-type BoardData = NonNullable<Awaited<ReturnType<typeof import("@/actions/board").getBoardById>>>;
-type ColumnData = BoardData["columns"][number];
-type CardData = ColumnData["cards"][number];
+export type BoardData = NonNullable<Awaited<ReturnType<typeof import("@/actions/board").getBoardById>>>;
+export type ColumnData = BoardData["columns"][number];
+export type CardData = ColumnData["cards"][number];
 type UserOption = { id: string; displayName: string; username: string; avatar: string | null };
+
+type ViewMode = "kanban" | "calendar" | "list";
 
 interface BoardViewProps {
   board: BoardData;
@@ -61,6 +65,7 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
     searchParams.get("card")
   );
   const [showActivity, setShowActivity] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [filter, setFilter] = useState<FilterState>(emptyFilter);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState(board.title);
@@ -389,6 +394,27 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
             onChange={setFilter}
           />
 
+          <div className="flex items-center bg-gray-100 rounded-lg p-0.5 shrink-0">
+            {([
+              { mode: "kanban" as const, icon: Kanban, label: "Kanban" },
+              { mode: "calendar" as const, icon: CalendarDays, label: "Calendar" },
+              { mode: "list" as const, icon: List, label: "List" },
+            ]).map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={`p-1.5 rounded-md transition-all ${
+                  viewMode === mode
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-400 hover:text-gray-600"
+                }`}
+                title={label}
+              >
+                <Icon size={16} />
+              </button>
+            ))}
+          </div>
+
           <div className="hidden sm:flex -space-x-2 ml-2">
             {board.members.slice(0, 4).map((m) => (
               <div
@@ -478,54 +504,71 @@ export default function BoardView({ board, currentUser, allUsers, permissions }:
       )}
 
       {/* Board Content */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-6">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="flex gap-4 h-full items-start">
-            <SortableContext
-              items={filteredColumns.map((c) => c.id)}
-              strategy={horizontalListSortingStrategy}
-            >
-              {filteredColumns.map((column) => {
-                const isRestricted = restrictedColumnIds.has(column.id);
-                return (
-                  <Column
-                    key={column.id}
-                    column={column}
-                    boardId={board.id}
-                    labels={board.labels}
-                    isEditor={isRestricted ? false : isEditor}
-                    canCreateCard={isRestricted ? false : canCreateCard}
-                    canMoveCard={isRestricted ? false : canMoveCard}
-                    canEditColumn={isRestricted ? false : canEditColumn}
-                    canDeleteColumn={isRestricted ? false : canDeleteColumn}
-                    restricted={isRestricted}
-                    onCardClick={isRestricted ? undefined : setSelectedCardId}
-                  />
-                );
-              })}
-            </SortableContext>
+      {viewMode === "kanban" && (
+        <div className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-6">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-4 h-full items-start">
+              <SortableContext
+                items={filteredColumns.map((c) => c.id)}
+                strategy={horizontalListSortingStrategy}
+              >
+                {filteredColumns.map((column) => {
+                  const isRestricted = restrictedColumnIds.has(column.id);
+                  return (
+                    <Column
+                      key={column.id}
+                      column={column}
+                      boardId={board.id}
+                      labels={board.labels}
+                      isEditor={isRestricted ? false : isEditor}
+                      canCreateCard={isRestricted ? false : canCreateCard}
+                      canMoveCard={isRestricted ? false : canMoveCard}
+                      canEditColumn={isRestricted ? false : canEditColumn}
+                      canDeleteColumn={isRestricted ? false : canDeleteColumn}
+                      restricted={isRestricted}
+                      onCardClick={isRestricted ? undefined : setSelectedCardId}
+                    />
+                  );
+                })}
+              </SortableContext>
 
-            {canAddColumn && (
-              <AddColumn
-                boardId={board.id}
-                lastOrder={columns.length > 0 ? columns[columns.length - 1].order : null}
-              />
-            )}
-          </div>
+              {canAddColumn && (
+                <AddColumn
+                  boardId={board.id}
+                  lastOrder={columns.length > 0 ? columns[columns.length - 1].order : null}
+                />
+              )}
+            </div>
 
-          <DragOverlay>
-            {activeCard && (
-              <CardThumb card={activeCard} isDragOverlay onCardClick={() => {}} />
-            )}
-          </DragOverlay>
-        </DndContext>
-      </div>
+            <DragOverlay>
+              {activeCard && (
+                <CardThumb card={activeCard} isDragOverlay onCardClick={() => {}} />
+              )}
+            </DragOverlay>
+          </DndContext>
+        </div>
+      )}
+
+      {viewMode === "calendar" && (
+        <CalendarView
+          columns={filteredColumns}
+          onCardClick={setSelectedCardId}
+        />
+      )}
+
+      {viewMode === "list" && (
+        <ListView
+          columns={filteredColumns}
+          labels={board.labels}
+          onCardClick={setSelectedCardId}
+        />
+      )}
 
       {/* Card Modal */}
       {selectedCardId && (
