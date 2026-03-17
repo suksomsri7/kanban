@@ -46,7 +46,17 @@
           "priority": { "$ref": "#/components/schemas/Priority" },
           "dueDate": { "type": "string", "format": "date", "nullable": true },
           "labelIds": { "type": "array", "items": { "type": "string" } },
-          "assigneeIds": { "type": "array", "items": { "type": "string" } }
+          "assigneeIds": { "type": "array", "items": { "type": "string" } },
+          "subtasks": {
+            "type": "array",
+            "description": "Checklist items to create with the card. Accepts strings or objects with title.",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "object", "properties": { "title": { "type": "string" } }, "required": ["title"] }
+              ]
+            }
+          }
         }
       },
       "CardUpdate": {

@@ -218,8 +218,11 @@ Content-Type: application/json
 | `dueDate` | string | no | ISO date: "2026-03-20" |
 | `labelIds` | string[] | no | Array of label IDs to attach |
 | `assigneeIds` | string[] | no | Array of user IDs to assign |
+| `subtasks` | string[] or object[] | no | Checklist items to create with the card |
 
-**Example:**
+> **Subtasks format:** You can pass either an array of strings `["Task 1", "Task 2"]` or an array of objects `[{"title": "Task 1"}, {"title": "Task 2"}]`. Both formats work. The subtasks will be created in the order provided.
+
+**Example (basic):**
 ```json
 {
   "title": "Implement login page",
@@ -228,6 +231,25 @@ Content-Type: application/json
   "dueDate": "2026-03-20",
   "assigneeIds": ["cm_user_somchai"],
   "labelIds": ["cm_label_feature"]
+}
+```
+
+**Example (with subtasks/checklist):**
+```json
+{
+  "title": "Social Media Campaign",
+  "columnId": "cm_column_todo",
+  "priority": "MEDIUM",
+  "dueDate": "2026-03-25",
+  "assigneeIds": ["cm_user_somchai"],
+  "subtasks": [
+    "Content Create",
+    "Approve Content",
+    "Create Media",
+    "Approve Media",
+    "Schedule Post",
+    "Done"
+  ]
 }
 ```
 
@@ -413,7 +435,8 @@ Use the **HTTP Request** node with:
 {
   "title": "New task from webhook",
   "columnId": "your_column_id",
-  "priority": "HIGH"
+  "priority": "HIGH",
+  "subtasks": ["Step 1", "Step 2", "Step 3"]
 }
 ```
 
