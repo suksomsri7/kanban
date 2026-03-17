@@ -83,18 +83,45 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // #region agent log
+  const _debug: Record<string, unknown> = { subtaskTitlesRaw: subtaskTitles, typeofSubtaskTitles: typeof subtaskTitles, isArray: Array.isArray(subtaskTitles), bodyKeys: Object.keys(body) };
+  // #endregion
+
   if (subtaskTitles && Array.isArray(subtaskTitles) && subtaskTitles.length > 0) {
     const titles = subtaskTitles.map((s) => (typeof s === "string" ? s : s?.title)).filter((t): t is string => !!t?.trim());
+    // #region agent log
+    _debug.titlesAfterFilter = titles;
+    _debug.titlesLength = titles.length;
+    // #endregion
     if (titles.length > 0) {
       let prevOrder: string | null = null;
+      // #region agent log
+      const _createdSubtasks: unknown[] = [];
+      // #endregion
       for (const t of titles) {
         const order = generateKeyBetween(prevOrder, null);
-        await prisma.subtask.create({
-          data: { title: t.trim(), cardId: card.id, order },
-        });
+        try {
+          const st = await prisma.subtask.create({
+            data: { title: t.trim(), cardId: card.id, order },
+          });
+          // #region agent log
+          _createdSubtasks.push({ ok: true, id: st.id, title: t });
+          // #endregion
+        } catch (err: unknown) {
+          // #region agent log
+          _createdSubtasks.push({ ok: false, title: t, error: String(err) });
+          // #endregion
+        }
         prevOrder = order;
       }
+      // #region agent log
+      _debug.createdSubtasks = _createdSubtasks;
+      // #endregion
     }
+  } else {
+    // #region agent log
+    _debug.skipped = true;
+    // #endregion
   }
 
   await logActivity("CARD_CREATED", column.boardId, result.auth.user.id, { title: card.title }, card.id);
@@ -110,7 +137,9 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return jsonOk(fullCard);
+  // #region agent log
+  return jsonOk({ ...fullCard, _debug });
+  // #endregion
 }
 
 export async function GET(req: NextRequest) {
