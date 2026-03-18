@@ -125,7 +125,7 @@ async function authenticateWithBearerToken(token: string): Promise<AuthResult> {
     return authenticateWithApiKey(token);
   }
 
-  const envApiKey = process.env.API_KEY;
+  const envApiKey = process.env.API_KEY?.trim();
   if (!envApiKey) {
     return {
       error: NextResponse.json(
@@ -144,7 +144,7 @@ async function authenticateWithBearerToken(token: string): Promise<AuthResult> {
     };
   }
 
-  const agentUsername = process.env.API_AGENT_USERNAME || "admin";
+  const agentUsername = (process.env.API_AGENT_USERNAME || "admin").trim();
   const user = await prisma.user.findUnique({
     where: { username: agentUsername },
     select: { id: true, username: true, displayName: true, role: true, avatar: true },
