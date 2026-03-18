@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateApi, requireScope, requireAnyScope, jsonOk, jsonError } from "@/lib/api-auth";
 import { logActivity } from "@/actions/activity";
@@ -106,9 +106,6 @@ export async function POST(req: NextRequest) {
 
   return jsonOk(board);
   } catch (err: unknown) {
-    return NextResponse.json(
-      { success: false, error: "Internal server error", detail: String(err) },
-      { status: 500 }
-    );
+    return jsonError("Internal server error", 500);
   }
 }
