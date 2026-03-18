@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateApi, requireScope, requireAnyScope, jsonOk, jsonError } from "@/lib/api-auth";
 import { logActivity } from "@/actions/activity";
@@ -56,6 +56,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const result = await authenticateApi(req);
   if (result.error) return result.error;
   const scopeErr = requireAnyScope(result.auth, ["boards:write", "boards:edit"]);
@@ -100,15 +101,26 @@ export async function PATCH(
     },
   });
 
-  await logActivity("BOARD_UPDATED", id, result.auth.user.id, data);
+  try {
+    await logActivity("BOARD_UPDATED", id, result.auth.user.id, data);
+  } catch {
+    // logActivity failure is non-critical
+  }
 
   return jsonOk(board);
+  } catch (err: unknown) {
+    return NextResponse.json(
+      { success: false, error: "Internal server error", detail: String(err) },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const result = await authenticateApi(req);
   if (result.error) return result.error;
   const scopeErr = requireAnyScope(result.auth, ["boards:write", "boards:delete"]);
@@ -120,7 +132,18 @@ export async function DELETE(
   if (!board) return jsonError("Board not found", 404);
 
   await prisma.board.update({ where: { id }, data: { isArchived: true } });
-  await logActivity("BOARD_UPDATED", id, result.auth.user.id, { action: "archived", title: board.title });
+
+  try {
+    await logActivity("BOARD_UPDATED", id, result.auth.user.id, { action: "archived", title: board.title });
+  } catch {
+    // logActivity failure is non-critical
+  }
 
   return jsonOk({ deleted: true });
+  } catch (err: unknown) {
+    return NextResponse.json(
+      { success: false, error: "Internal server error", detail: String(err) },
+      { status: 500 }
+    );
+  }
 }
