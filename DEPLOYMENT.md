@@ -1,10 +1,79 @@
-# คู่มือการติดตั้ง Kanban บน VPS (Hostinger)
-
-คู่มือนี้ใช้สำหรับการ deploy Kanban บน VPS เช่น Hostinger, DigitalOcean, Vultr หรือ VPS อื่นๆ
+# คู่มือการ Deploy Kanban
 
 ---
 
-## 1. ความต้องการของระบบ
+## A. Deploy บน Vercel (แนะนำ)
+
+โปรเจกต์ deploy ขึ้น Vercel เป็นหลัก
+
+### ความต้องการ
+
+- บัญชี [Vercel](https://vercel.com)
+- PostgreSQL (Vercel Postgres, Neon, Supabase หรือ external DB)
+- ตัวแปร environment ด้านล่าง
+
+### 1. เชื่อม Repo กับ Vercel
+
+1. เข้า [vercel.com](https://vercel.com) → Add New Project
+2. Import Git repository ของ Kanban
+3. Framework Preset: **Next.js** (auto-detect)
+4. Build Command: `prisma generate && next build` (หรือใช้จาก `vercel.json`)
+5. ตั้งค่า Environment Variables ด้านล่าง
+
+### 2. Environment Variables (Vercel)
+
+ใน Vercel Project → Settings → Environment Variables ใส่ค่าต่อไปนี้:
+
+| ตัวแปร | บังคับ | คำอธิบาย |
+|--------|--------|----------|
+| `DATABASE_URL` | ✅ | Connection string PostgreSQL (เช่น Vercel Postgres, Neon) |
+| `NEXTAUTH_SECRET` | ✅ | Secret สำหรับ NextAuth (อย่างน้อย 32 ตัวอักษร) |
+| `NEXTAUTH_URL` | ✅ | **ต้องเป็น URL ที่ผู้ใช้เข้า** เช่น `https://kanban.suksomsri.cloud` ถ้าใช้ custom domain — ถ้าใส่เป็น `*.vercel.app` แล้วเข้า via custom domain จะล็อกอิน/เข้าไม่ได้ |
+| `API_KEY` | ไม่ | API Key สำหรับ Agent/Integration (Bearer token) |
+| `API_AGENT_USERNAME` | ไม่ | username ที่ Agent ใช้ (default: `admin`) |
+| `NEXT_PUBLIC_BASE_PATH` | ไม่ | เว้นว่าง `""` สำหรับ root; ใส่เช่น `/kanban` ถ้าใช้ subpath |
+| `NEXT_PUBLIC_PUSHER_*` / `PUSHER_*` | ไม่ | ถ้าใช้ Real-time (Soketi/Pusher) |
+
+**ถ้าใช้ Custom Domain (เช่น kanban.suksomsri.cloud):**
+1. ใน Vercel → Project → **Settings → Domains** ให้เพิ่ม domain นั้นและ verify
+2. ตั้ง **NEXTAUTH_URL** = `https://kanban.suksomsri.cloud` (ไม่มี slash ท้าย) — **ถ้าค่าเป็น `*.vercel.app` จะได้ `/api/auth/error` → "Bad request."**
+3. **สำคัญ:** เลือก Environment เป็น **Production** (และ Preview ถ้าใช้) แล้ว Save
+4. **ต้อง Redeploy หลังแก้ env:** ไปที่ Deployments → deployment ล่าสุด → ⋮ → **Redeploy** (การ push code ใหม่จะ deploy แต่ env เก่าอาจถูก cache ถ้าไม่กด Redeploy หลังแก้ตัวแปร)
+5. ตรวจสอบ: เปิด `https://kanban.suksomsri.cloud/api/debug-auth-url` ควรเห็น `"match": true`
+
+**สร้าง Secret:**
+```bash
+openssl rand -base64 32   # สำหรับ NEXTAUTH_SECRET
+openssl rand -hex 32      # สำหรับ API_KEY
+```
+
+### 3. Deploy
+
+- **Auto deploy:** push ขึ้น branch ที่เชื่อมกับ Vercel (เช่น `main`) จะ build และ deploy อัตโนมัติ
+- **Manual (CLI):**
+  ```bash
+  npm i -g vercel
+  vercel --prod
+  ```
+
+### 4. Database (ครั้งแรก)
+
+หลัง deploy แล้ว ต้อง push schema และ (ถ้าต้องการ) seed ข้อมูลจากเครื่อง local ที่มี `DATABASE_URL` ชี้ไปที่ DB เดียวกัน:
+
+```bash
+npx prisma db push
+# optional: npx prisma db seed
+```
+
+---
+
+## B. Deploy บน VPS (Docker) — เลิกใช้แล้ว
+
+ส่วนด้านล่างเป็นคู่มือเดิมสำหรับการ deploy บน VPS ด้วย Docker (ยกเลิกไปแล้ว ปกติใช้ Vercel)
+
+---
+
+## 1. ความต้องการของระบบ (VPS)
 
 - VPS ที่รัน Linux (Ubuntu 22.04 LTS แนะนำ)
 - Docker Engine 20.10+
@@ -160,8 +229,23 @@ docker compose up -d
 # ดู logs
 docker compose logs -f app
 
-# Rebuild หลัง pull code ใหม่
+# Rebuild หลัง pull code ใหม่ / อัปเดต API หรือคู่มือ
 docker compose up -d --build
+```
+
+### 5.4 Deploy หลังอัปเดต code (หรือคู่มือ API / OpenClaw)
+
+เมื่อแก้ไข code, AGENT_API.md หรือ OPENCLAW_PROMPTS.md แล้ว ให้ build และรันใหม่:
+
+```bash
+cd /path/to/kanban
+docker compose up -d --build
+```
+
+หรือถ้าใช้ `docker-compose` (ตัวแยก):
+
+```bash
+docker-compose up -d --build
 ```
 
 ---

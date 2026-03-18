@@ -30,6 +30,11 @@
 - GET /boards/{id} - ดู board พร้อม cards ทั้งหมด
 - GET /users - ดู users ทั้งหมด (สำหรับ assign)
 
+จัดการ Boards:
+- POST /boards - สร้าง board (title*, description, brandId, columns: ["col1","col2",...])
+- PATCH /boards/{id} - อัพเดท board (title, description, color)
+- DELETE /boards/{id} - ลบ board (archive)
+
 จัดการ Cards:
 - GET /cards - ค้นหา cards (รองรับ q, boardId, columnId, priority, assigneeId, limit, offset)
 - GET /cards/{id} - ดู card รายละเอียด
@@ -43,8 +48,8 @@ Labels & Assignees:
 - POST /cards/{id}/assignees - เพิ่ม/ลบ assignee (toggle) → body: {"userId":"..."}
 
 Comments:
-- GET /cards/{id}/comments - ดู comments ทั้งหมด
-- POST /cards/{id}/comments - เพิ่ม comment → body: {"content":"..."}
+- GET /cards/{id}/comments - ดู comments ทั้งหมด (แต่ละ comment มี author: id, username, displayName, avatar — รู้ว่าใครเขียน)
+- POST /cards/{id}/comments - เพิ่ม comment → body: {"content":"..."} (comment จะบันทึกเป็น user เจ้าของ API key; response มี author)
 
 Subtasks (Checklist):
 - GET /cards/{id}/subtasks - ดู subtasks ทั้งหมด
@@ -213,6 +218,8 @@ assign user somchai ไปที่ card [id]
 ดู comments ทั้งหมดของ card [id]
 ```
 
+> **หมายเหตุ:** Comment ที่สร้างผ่าน API จะบันทึกเป็น **user เจ้าของ API key** ทุก response ที่มี comment จะมี `author`: `{ id, username, displayName, avatar }` จึงรู้ได้ว่าใครเป็นคน comment
+
 ### 2.15 จัดการ Subtasks (Checklist)
 
 ```
@@ -253,6 +260,9 @@ assign user somchai ไปที่ card [id]
 | ดู brands | GET | /api/v1/brands | - |
 | ดู boards | GET | /api/v1/boards | - |
 | ดู board detail | GET | /api/v1/boards/{id} | - |
+| สร้าง board | POST | /api/v1/boards | `{"title":"...","columns":["To Do","In Progress","Done"]}` |
+| อัพเดท board | PATCH | /api/v1/boards/{id} | `{"title":"...","description":"..."}` |
+| ลบ board | DELETE | /api/v1/boards/{id} | - |
 | ดู users | GET | /api/v1/users | - |
 
 ### จัดการ Cards
@@ -336,19 +346,41 @@ API Key คือ: kbn_abc123xyz789
 
 ## 6. API Scopes ที่ต้องเปิด
 
-ถ้าใช้ Per-User API Key ต้องเปิด scopes ที่ต้องการ:
+ถ้าใช้ Per-User API Key ต้องเปิด scopes ที่ต้องการ
+
+**แบบรวม (เลือกอย่างใดอย่างหนึ่งหรือทั้งคู่):**
 
 | Scope | ใช้ทำอะไร |
 |-------|----------|
 | `boards:read` | ดู boards, columns, labels |
+| `boards:write` | สร้าง + แก้ไข + ลบ boards |
 | `brands:read` | ดู brands |
 | `users:read` | ดู users |
 | `cards:read` | ค้นหา/ดู cards |
-| `cards:write` | สร้าง/อัพเดท/ลบ cards, toggle labels/assignees |
+| `cards:write` | สร้าง + แก้ไข + ลบ cards, toggle labels/assignees |
 | `cards:move` | ย้าย cards ระหว่าง columns |
 | `comments:read` | ดู comments |
-| `comments:write` | เพิ่ม comments |
+| `comments:write` | สร้าง comments (ถ้ามี API แก้/ลบ comment จะรวมด้วย) |
 | `subtasks:read` | ดู subtasks |
-| `subtasks:write` | สร้าง/อัพเดท/ลบ subtasks |
+| `subtasks:write` | สร้าง + แก้ไข + ลบ subtasks |
+
+**แบบละเอียด (กำหนดเฉพาะการกระทำ):**
+
+| Scope | ใช้ทำอะไร |
+|-------|----------|
+| `boards:create` | สร้าง board เท่านั้น |
+| `boards:edit` | แก้ไข board เท่านั้น |
+| `boards:delete` | ลบ board เท่านั้น |
+| `cards:create` | สร้าง card เท่านั้น |
+| `cards:edit` | แก้ไข card, toggle labels/assignees |
+| `cards:delete` | ลบ card เท่านั้น |
+| `comments:create` | สร้าง comment เท่านั้น |
+| `comments:edit` | แก้ไข comment (เมื่อมี API) |
+| `comments:delete` | ลบ comment (เมื่อมี API) |
+| `subtasks:create` | สร้าง subtask เท่านั้น |
+| `subtasks:edit` | แก้ไข subtask เท่านั้น |
+| `subtasks:delete` | ลบ subtask เท่านั้น |
+
+ใช้แบบรวม (เช่น `cards:write`) หรือแบบละเอียด (เช่น `cards:create` + `cards:edit`) ก็ได้
 
 > **แนะนำ:** ถ้าต้องการให้ Agent ทำได้ทุกอย่าง ให้เปิดทุก scopes หรือใช้ Legacy Bearer Token (มีทุก scopes อัตโนมัติ)

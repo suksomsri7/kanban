@@ -12,6 +12,7 @@ export async function middleware(req: NextRequest) {
   );
   const isAuthRoute = pathname.startsWith("/api/auth");
   const isApiV1 = pathname.startsWith("/api/v1");
+
   const isStaticAsset =
     pathname.startsWith("/_next") || pathname.startsWith("/favicon");
 

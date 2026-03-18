@@ -176,6 +176,17 @@ export function requireScope(auth: ApiAuthResult, scope: ApiKeyScope): NextRespo
   );
 }
 
+/** Pass if auth has "all" or any of the given scopes (for granular + backward-compat with :write). */
+export function requireAnyScope(auth: ApiAuthResult, scopes: ApiKeyScope[]): NextResponse | null {
+  if (auth.scopes === "all") return null;
+  const has = scopes.some((s) => auth.scopes.includes(s));
+  if (has) return null;
+  return NextResponse.json(
+    { success: false, error: `Insufficient permissions. Required one of: ${scopes.join(", ")}` },
+    { status: 403 }
+  );
+}
+
 export function jsonOk(data: unknown) {
   return NextResponse.json({ success: true, data });
 }

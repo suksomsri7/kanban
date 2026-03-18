@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApi, requireScope, jsonOk, jsonError } from "@/lib/api-auth";
+import { authenticateApi, requireScope, requireAnyScope, jsonOk, jsonError } from "@/lib/api-auth";
 import { generateKeyBetween } from "fractional-indexing";
 
 export async function POST(
@@ -9,7 +9,7 @@ export async function POST(
 ) {
   const result = await authenticateApi(req);
   if (result.error) return result.error;
-  const scopeErr = requireScope(result.auth, "subtasks:write");
+  const scopeErr = requireAnyScope(result.auth, ["subtasks:write", "subtasks:create"]);
   if (scopeErr) return scopeErr;
 
   const { id: cardId } = await params;

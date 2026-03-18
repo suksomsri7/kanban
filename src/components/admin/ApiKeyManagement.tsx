@@ -23,9 +23,10 @@ import {
   updateApiKeyScopes,
 } from "@/actions/api-key";
 import {
-  API_KEY_SCOPES,
   SCOPE_LABELS,
   SCOPE_GROUPS,
+  UI_SCOPES,
+  expandWriteScopes,
   type ApiKeyScope,
 } from "@/lib/api-key";
 
@@ -88,7 +89,7 @@ export default function ApiKeyManagement({ initialKeys, users }: Props) {
   }
 
   function selectAllFormScopes() {
-    setFormScopes(new Set(API_KEY_SCOPES));
+    setFormScopes(new Set(UI_SCOPES));
   }
 
   function clearAllFormScopes() {
@@ -150,8 +151,8 @@ export default function ApiKeyManagement({ initialKeys, users }: Props) {
   }
 
   function openScopeEditor(key: ApiKeyData) {
-    const scopes = Array.isArray(key.scopes) ? key.scopes : [];
-    setEditScopes(new Set(scopes as ApiKeyScope[]));
+    const raw = Array.isArray(key.scopes) ? (key.scopes as ApiKeyScope[]) : [];
+    setEditScopes(new Set(expandWriteScopes(raw)));
     setShowScopes(key.id);
   }
 

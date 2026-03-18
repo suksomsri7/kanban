@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApi, requireScope, jsonOk, jsonError } from "@/lib/api-auth";
+import { authenticateApi, requireScope, requireAnyScope, jsonOk, jsonError } from "@/lib/api-auth";
 import { logActivity } from "@/actions/activity";
 
 export async function GET(
@@ -23,7 +23,7 @@ export async function GET(
       },
       labels: { include: { label: true } },
       comments: {
-        include: { author: { select: { id: true, displayName: true, avatar: true } } },
+        include: { author: { select: { id: true, username: true, displayName: true, avatar: true } } },
         orderBy: { createdAt: "desc" },
       },
       attachments: {
@@ -47,7 +47,7 @@ export async function PATCH(
 ) {
   const result = await authenticateApi(req);
   if (result.error) return result.error;
-  const scopeErr = requireScope(result.auth, "cards:write");
+  const scopeErr = requireAnyScope(result.auth, ["cards:write", "cards:edit"]);
   if (scopeErr) return scopeErr;
 
   const { id } = await params;
@@ -111,7 +111,7 @@ export async function DELETE(
 ) {
   const result = await authenticateApi(req);
   if (result.error) return result.error;
-  const scopeErr = requireScope(result.auth, "cards:write");
+  const scopeErr = requireAnyScope(result.auth, ["cards:write", "cards:delete"]);
   if (scopeErr) return scopeErr;
 
   const { id } = await params;

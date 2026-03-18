@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApi, requireScope, jsonOk, jsonError } from "@/lib/api-auth";
+import { authenticateApi, requireAnyScope, jsonOk, jsonError } from "@/lib/api-auth";
 
 export async function PATCH(
   req: NextRequest,
@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
   const result = await authenticateApi(req);
   if (result.error) return result.error;
-  const scopeErr = requireScope(result.auth, "subtasks:write");
+  const scopeErr = requireAnyScope(result.auth, ["subtasks:write", "subtasks:edit"]);
   if (scopeErr) return scopeErr;
 
   const { subtaskId } = await params;
@@ -48,7 +48,7 @@ export async function DELETE(
 ) {
   const result = await authenticateApi(req);
   if (result.error) return result.error;
-  const scopeErr = requireScope(result.auth, "subtasks:write");
+  const scopeErr = requireAnyScope(result.auth, ["subtasks:write", "subtasks:delete"]);
   if (scopeErr) return scopeErr;
 
   const { subtaskId } = await params;

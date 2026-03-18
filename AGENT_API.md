@@ -41,22 +41,42 @@ curl -H "Authorization: Bearer my-secret-key" https://kanban.example.com/api/v1/
 
 ## API Key Scopes (Permissions)
 
-Per-user API keys are restricted by scopes. Each endpoint requires a specific scope. If a key lacks the required scope, the API returns `403 Forbidden`.
+Per-user API keys are restricted by scopes. Each endpoint requires a specific scope (or one of the granular scopes). If a key lacks the required scope, the API returns `403 Forbidden`.
+
+**Broad scopes** (backward compatible — grant full access to that resource):
 
 | Scope | Grants Access To |
 |-------|-----------------|
 | `boards:read` | List boards, get board detail |
+| `boards:write` | Create, update, delete boards |
 | `brands:read` | List brands |
 | `users:read` | List users |
 | `cards:read` | List/search cards, get card detail |
 | `cards:write` | Create, update, delete cards; toggle labels/assignees |
 | `cards:move` | Move cards between columns |
 | `comments:read` | List comments |
-| `comments:write` | Create comments |
+| `comments:write` | Create comments (edit/delete when endpoints exist) |
 | `subtasks:read` | List subtasks |
 | `subtasks:write` | Create, update, delete subtasks |
 
-Legacy Bearer token (env-based) has **all** scopes automatically.
+**Granular scopes** (optional — assign only what you need):
+
+| Scope | Grants Access To |
+|-------|-----------------|
+| `boards:create` | Create boards only |
+| `boards:edit` | Update boards only |
+| `boards:delete` | Delete (archive) boards only |
+| `cards:create` | Create cards only |
+| `cards:edit` | Update cards, toggle labels/assignees |
+| `cards:delete` | Delete cards only |
+| `comments:create` | Create comments only |
+| `comments:edit` | Edit comments (when endpoint exists) |
+| `comments:delete` | Delete comments (when endpoint exists) |
+| `subtasks:create` | Create subtasks only |
+| `subtasks:edit` | Update subtasks only |
+| `subtasks:delete` | Delete subtasks only |
+
+A key may have either the broad scope (e.g. `cards:write`) or the specific scopes (e.g. `cards:create` + `cards:edit`). Legacy Bearer token (env-based) has **all** scopes automatically.
 
 ---
 
@@ -172,6 +192,57 @@ Full board with all columns → cards → assignees, labels, subtasks, counts.
 
 ---
 
+### 3a. Create Board
+```
+POST /api/v1/boards
+Content-Type: application/json
+```
+**Scope:** `boards:write` or `boards:create`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | YES | Board title (1-100 chars) |
+| `description` | string | no | Board description |
+| `brandId` | string | no | Brand ID to associate |
+| `columns` | string[] | no | Column names (default: To Do, In Progress, Done) |
+
+**Example:**
+```json
+{
+  "title": "Marketing Board",
+  "description": "Q2 marketing campaigns",
+  "brandId": "brand_id_here",
+  "columns": ["Backlog", "In Progress", "Review", "Done"]
+}
+```
+
+---
+
+### 3b. Update Board
+```
+PATCH /api/v1/boards/{boardId}
+Content-Type: application/json
+```
+**Scope:** `boards:write` or `boards:edit`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | New title |
+| `description` | string / null | New description (null to clear) |
+| `color` | string / null | Board color (null to clear) |
+
+---
+
+### 3c. Delete Board (Archive)
+```
+DELETE /api/v1/boards/{boardId}
+```
+**Scope:** `boards:write` or `boards:delete`
+
+Board will be archived (soft delete).
+
+---
+
 ### 4. Search / List Cards
 ```
 GET /api/v1/cards?q=&boardId=&columnId=&priority=&assigneeId=&limit=50&offset=0
@@ -207,7 +278,7 @@ Full card with column, assignees, labels, comments, attachments, subtasks, depen
 POST /api/v1/cards
 Content-Type: application/json
 ```
-**Scope:** `cards:write`
+**Scope:** `cards:write` or `cards:create`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -260,7 +331,7 @@ Content-Type: application/json
 PATCH /api/v1/cards/{cardId}
 Content-Type: application/json
 ```
-**Scope:** `cards:write`
+**Scope:** `cards:write` or `cards:edit`
 
 Only include fields you want to change:
 
@@ -277,7 +348,7 @@ Only include fields you want to change:
 ```
 DELETE /api/v1/cards/{cardId}
 ```
-**Scope:** `cards:write`
+**Scope:** `cards:write` or `cards:delete`
 
 ---
 
@@ -299,7 +370,7 @@ Content-Type: application/json
 ```
 POST /api/v1/cards/{cardId}/labels
 ```
-**Scope:** `cards:write`
+**Scope:** `cards:write` or `cards:edit`
 
 Body: `{ "labelId": "..." }` — Adds if missing, removes if present.
 Response: `{ action: "added" | "removed" }`
@@ -310,7 +381,7 @@ Response: `{ action: "added" | "removed" }`
 ```
 POST /api/v1/cards/{cardId}/assignees
 ```
-**Scope:** `cards:write`
+**Scope:** `cards:write` or `cards:edit`
 
 Body: `{ "userId": "..." }` — Assigns if not assigned, removes if assigned.
 Response: `{ action: "added" | "removed" }`
@@ -321,9 +392,11 @@ Response: `{ action: "added" | "removed" }`
 ```
 POST /api/v1/cards/{cardId}/comments
 ```
-**Scope:** `comments:write`
+**Scope:** `comments:write` or `comments:create`
 
 Body: `{ "content": "..." }`
+
+The comment is created as the **API key owner** (the user who owns the key). The response and all comment list responses include `author`: `{ id, username, displayName, avatar }` so you can always see who wrote each comment.
 
 ---
 
@@ -333,13 +406,15 @@ GET /api/v1/cards/{cardId}/comments
 ```
 **Scope:** `comments:read`
 
+Each comment includes `author`: `{ id, username, displayName, avatar }` so you know who wrote it.
+
 ---
 
 ### 14. Create Subtask
 ```
 POST /api/v1/cards/{cardId}/subtasks
 ```
-**Scope:** `subtasks:write`
+**Scope:** `subtasks:write` or `subtasks:create`
 
 Body: `{ "title": "..." }`
 
@@ -357,7 +432,7 @@ GET /api/v1/cards/{cardId}/subtasks
 ```
 PATCH /api/v1/cards/{cardId}/subtasks/{subtaskId}
 ```
-**Scope:** `subtasks:write`
+**Scope:** `subtasks:write` or `subtasks:edit`
 
 Body: `{ "title": "...", "isCompleted": true }`
 
@@ -367,7 +442,7 @@ Body: `{ "title": "...", "isCompleted": true }`
 ```
 DELETE /api/v1/cards/{cardId}/subtasks/{subtaskId}
 ```
-**Scope:** `subtasks:write`
+**Scope:** `subtasks:write` or `subtasks:delete`
 
 ---
 
@@ -389,20 +464,23 @@ Returns all active users (id, username, displayName, role).
 | List brands | `GET` | `/api/v1/brands` | `brands:read` |
 | List boards | `GET` | `/api/v1/boards` | `boards:read` |
 | Board detail | `GET` | `/api/v1/boards/{id}` | `boards:read` |
+| Create board | `POST` | `/api/v1/boards` | `boards:write` or `boards:create` |
+| Update board | `PATCH` | `/api/v1/boards/{id}` | `boards:write` or `boards:edit` |
+| Delete board | `DELETE` | `/api/v1/boards/{id}` | `boards:write` or `boards:delete` |
 | Search cards | `GET` | `/api/v1/cards?q=&boardId=` | `cards:read` |
 | Card detail | `GET` | `/api/v1/cards/{id}` | `cards:read` |
-| Create card | `POST` | `/api/v1/cards` | `cards:write` |
-| Update card | `PATCH` | `/api/v1/cards/{id}` | `cards:write` |
-| Delete card | `DELETE` | `/api/v1/cards/{id}` | `cards:write` |
+| Create card | `POST` | `/api/v1/cards` | `cards:write` or `cards:create` |
+| Update card | `PATCH` | `/api/v1/cards/{id}` | `cards:write` or `cards:edit` |
+| Delete card | `DELETE` | `/api/v1/cards/{id}` | `cards:write` or `cards:delete` |
 | Move card | `POST` | `/api/v1/cards/{id}/move` | `cards:move` |
-| Toggle label | `POST` | `/api/v1/cards/{id}/labels` | `cards:write` |
-| Toggle assignee | `POST` | `/api/v1/cards/{id}/assignees` | `cards:write` |
-| Add comment | `POST` | `/api/v1/cards/{id}/comments` | `comments:write` |
+| Toggle label | `POST` | `/api/v1/cards/{id}/labels` | `cards:write` or `cards:edit` |
+| Toggle assignee | `POST` | `/api/v1/cards/{id}/assignees` | `cards:write` or `cards:edit` |
+| Add comment | `POST` | `/api/v1/cards/{id}/comments` | `comments:write` or `comments:create` |
 | List comments | `GET` | `/api/v1/cards/{id}/comments` | `comments:read` |
-| Create subtask | `POST` | `/api/v1/cards/{id}/subtasks` | `subtasks:write` |
+| Create subtask | `POST` | `/api/v1/cards/{id}/subtasks` | `subtasks:write` or `subtasks:create` |
 | List subtasks | `GET` | `/api/v1/cards/{id}/subtasks` | `subtasks:read` |
-| Update subtask | `PATCH` | `/api/v1/cards/{id}/subtasks/{sid}` | `subtasks:write` |
-| Delete subtask | `DELETE` | `/api/v1/cards/{id}/subtasks/{sid}` | `subtasks:write` |
+| Update subtask | `PATCH` | `/api/v1/cards/{id}/subtasks/{sid}` | `subtasks:write` or `subtasks:edit` |
+| Delete subtask | `DELETE` | `/api/v1/cards/{id}/subtasks/{sid}` | `subtasks:write` or `subtasks:delete` |
 | List users | `GET` | `/api/v1/users` | `users:read` |
 
 ---

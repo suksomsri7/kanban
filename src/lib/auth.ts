@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import type { SessionUser } from "@/types";
 
+// Auth.js v5 uses AUTH_URL; ensure it is set from NEXTAUTH_URL for custom domain (e.g. Vercel)
+if (typeof process !== "undefined" && process.env?.NEXTAUTH_URL && !process.env.AUTH_URL) {
+  process.env.AUTH_URL = process.env.NEXTAUTH_URL;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true,

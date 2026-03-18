@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApi, requireScope, jsonOk, jsonError } from "@/lib/api-auth";
+import { authenticateApi, requireAnyScope, jsonOk, jsonError } from "@/lib/api-auth";
 
 export async function POST(
   req: NextRequest,
@@ -8,7 +8,7 @@ export async function POST(
 ) {
   const result = await authenticateApi(req);
   if (result.error) return result.error;
-  const scopeErr = requireScope(result.auth, "cards:write");
+  const scopeErr = requireAnyScope(result.auth, ["cards:write", "cards:edit"]);
   if (scopeErr) return scopeErr;
 
   const { id: cardId } = await params;

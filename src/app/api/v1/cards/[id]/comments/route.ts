@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApi, requireScope, jsonOk, jsonError } from "@/lib/api-auth";
+import { authenticateApi, requireScope, requireAnyScope, jsonOk, jsonError } from "@/lib/api-auth";
 import { logActivity } from "@/actions/activity";
 import { triggerBoardEvent } from "@/lib/pusher-server";
 
@@ -10,7 +10,7 @@ export async function POST(
 ) {
   const result = await authenticateApi(req);
   if (result.error) return result.error;
-  const scopeErr = requireScope(result.auth, "comments:write");
+  const scopeErr = requireAnyScope(result.auth, ["comments:write", "comments:create"]);
   if (scopeErr) return scopeErr;
 
   const { id: cardId } = await params;
@@ -38,7 +38,7 @@ export async function POST(
       authorId: result.auth.user.id,
     },
     include: {
-      author: { select: { id: true, displayName: true, avatar: true } },
+      author: { select: { id: true, username: true, displayName: true, avatar: true } },
     },
   });
 
@@ -62,7 +62,7 @@ export async function GET(
   const comments = await prisma.comment.findMany({
     where: { cardId },
     include: {
-      author: { select: { id: true, displayName: true, avatar: true } },
+      author: { select: { id: true, username: true, displayName: true, avatar: true } },
     },
     orderBy: { createdAt: "desc" },
   });
