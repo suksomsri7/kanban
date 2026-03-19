@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MoreHorizontal, Pencil, Trash2, GripVertical, Lock, Settings } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, GripVertical, Lock, Settings, Bot } from "lucide-react";
 import CardThumb from "@/components/card/CardThumb";
 import AddCard from "@/components/card/AddCard";
 import ColumnSettingsDialog from "./ColumnSettingsDialog";
@@ -16,6 +16,8 @@ interface ColumnProps {
     title: string;
     order: string;
     cards: any[];
+    automationType?: string;
+    automationStatus?: string;
   };
   boardId: string;
   labels: any[];
@@ -109,6 +111,15 @@ export default function Column({ column, boardId, labels, isEditor, canCreateCar
           <span className="text-xs text-gray-400 ml-1 shrink-0">
             {column.cards.length}
           </span>
+          {column.automationStatus === "run" && (
+            <span className="inline-flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 shrink-0" title={column.automationType === "openclaw" ? "Agent active" : "AI automation active"}>
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+              </span>
+              <Bot size={12} />
+            </span>
+          )}
         </div>
 
         {isEditor && (canEditColumn || canDeleteColumn) && (
