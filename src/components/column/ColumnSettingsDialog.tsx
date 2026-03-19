@@ -108,17 +108,15 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
     return key;
   }
 
-  function buildWebhookUrl() {
+  function buildWebhookUrl(key: string) {
     const base = typeof window !== "undefined" ? window.location.origin : "";
-    return `${base}/api/v1/openclaw/${columnId}`;
+    return `${base}/api/v1/openclaw/${columnId}?key=${key}`;
   }
 
   function regenerateWebhook() {
-    setOpenclawUrl(buildWebhookUrl());
-  }
-
-  function regenerateApiKey() {
-    setOpenclawApiKey(generateApiKey());
+    const newKey = generateApiKey();
+    setOpenclawApiKey(newKey);
+    setOpenclawUrl(buildWebhookUrl(newKey));
   }
 
   function copyToClipboard(text: string, label: string) {
@@ -141,13 +139,13 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
         setWebhook(data.webhook || "");
         setPrompt(data.prompt || "");
         setAutomationStatus(data.automationStatus || "pause");
-        setOpenclawUrl(data.openclawUrl || "");
-        setOpenclawApiKey(data.openclawApiKey || "");
         if (data.openclawPermissions && typeof data.openclawPermissions === "object") {
           setOpenclawPerms(data.openclawPermissions as Record<string, boolean>);
         }
-        if (!data.openclawUrl) setOpenclawUrl(`${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/openclaw/${columnId}`);
-        if (!data.openclawApiKey) setOpenclawApiKey(generateApiKey());
+        const key = data.openclawApiKey || generateApiKey();
+        setOpenclawApiKey(key);
+        const base = typeof window !== "undefined" ? window.location.origin : "";
+        setOpenclawUrl(data.openclawUrl || `${base}/api/v1/openclaw/${columnId}?key=${key}`);
       }
       setLoading(false);
     });
@@ -388,19 +386,6 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                         </button>
                       </div>
                       {copied === "url" && <span className="text-[10px] text-green-600 mt-0.5">Copied!</span>}
-                    </div>
-                    <div>
-                      <label className={labelCls}>API Key</label>
-                      <div className="flex gap-1.5">
-                        <input type="text" value={openclawApiKey} readOnly className={`${inputCls} bg-gray-50 text-gray-600 font-mono text-xs flex-1`} />
-                        <button onClick={() => copyToClipboard(openclawApiKey, "key")} title="Copy" className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "key" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
-                          <Copy size={14} />
-                        </button>
-                        <button onClick={regenerateApiKey} title="Regenerate" className="px-2.5 py-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors shrink-0">
-                          <RefreshCw size={14} />
-                        </button>
-                      </div>
-                      {copied === "key" && <span className="text-[10px] text-green-600 mt-0.5">Copied!</span>}
                     </div>
                   </div>
                 </div>
