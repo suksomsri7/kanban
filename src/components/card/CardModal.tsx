@@ -14,6 +14,7 @@ import {
   Unlock,
   ShieldAlert,
   Columns,
+  Maximize2,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
@@ -104,6 +105,7 @@ export default function CardModal({
 
   const [showLabels, setShowLabels] = useState(false);
   const [showAssignees, setShowAssignees] = useState(false);
+  const [showDescModal, setShowDescModal] = useState(false);
 
   const [boardLabels, setBoardLabels] = useState(labels);
 
@@ -326,9 +328,19 @@ export default function CardModal({
               <div className="sm:col-span-2 space-y-6">
                 {/* Description */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
-                    Description
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm font-medium text-gray-700">
+                      Description
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowDescModal(true)}
+                      className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                      title="Expand description"
+                    >
+                      <Maximize2 size={14} />
+                    </button>
+                  </div>
                   {pCanEditDesc ? (
                     <RichTextEditor
                       content={description}
@@ -340,6 +352,43 @@ export default function CardModal({
                     <RichTextReadonly content={description || "No description"} />
                   )}
                 </div>
+
+                {/* Description Fullscreen Modal */}
+                {showDescModal && (
+                  <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8">
+                    <div
+                      className="absolute inset-0 bg-black/50"
+                      onClick={() => { handleSave(); setShowDescModal(false); }}
+                    />
+                    <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+                        <h3 className="text-base font-semibold text-gray-800">
+                          Description — {title}
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => { handleSave(); setShowDescModal(false); }}
+                          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-5">
+                        {pCanEditDesc ? (
+                          <RichTextEditor
+                            content={description}
+                            onChange={setDescription}
+                            onBlur={handleSave}
+                            placeholder="Add a description..."
+                            minHeight="400px"
+                          />
+                        ) : (
+                          <RichTextReadonly content={description || "No description"} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Labels Display */}
                 {card.labels.length > 0 && (

@@ -40,6 +40,7 @@ interface RichTextEditorProps {
   onBlur?: () => void;
   placeholder?: string;
   editable?: boolean;
+  minHeight?: string;
 }
 
 function isHtml(str: string): boolean {
@@ -243,7 +244,19 @@ export default function RichTextEditor({
   onBlur,
   placeholder = "Add a description...",
   editable = true,
+  minHeight,
 }: RichTextEditorProps) {
+  const editorClass = [
+    "prose prose-sm max-w-none px-3 py-2 overflow-y-auto focus:outline-none",
+    "[&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_h1]:text-lg [&_h2]:text-base [&_h3]:text-sm",
+    "[&_a]:text-blue-600 [&_a]:underline",
+    "[&_blockquote]:border-l-2 [&_blockquote]:border-gray-300 [&_blockquote]:pl-3 [&_blockquote]:italic",
+    "[&_code]:bg-gray-100 [&_code]:px-1 [&_code]:rounded",
+    "[&_pre]:bg-gray-900 [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-lg",
+    "[&_mark]:bg-yellow-200",
+    minHeight ? "" : "min-h-[80px] max-h-[300px]",
+  ].join(" ");
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -271,8 +284,8 @@ export default function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class:
-          "prose prose-sm max-w-none px-3 py-2 min-h-[80px] max-h-[300px] overflow-y-auto focus:outline-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_h1]:text-lg [&_h2]:text-base [&_h3]:text-sm [&_a]:text-blue-600 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-gray-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:rounded [&_pre]:bg-gray-900 [&_pre]:text-gray-100 [&_pre]:p-3 [&_pre]:rounded-lg [&_mark]:bg-yellow-200",
+        class: editorClass,
+        ...(minHeight ? { style: `min-height:${minHeight}` } : {}),
       },
     },
   });
