@@ -28,9 +28,23 @@ const TIMEZONES = [
   "UTC",
 ];
 
+const DAYS_OF_WEEK = [
+  { key: "mon", label: "จ", full: "Monday" },
+  { key: "tue", label: "อ", full: "Tuesday" },
+  { key: "wed", label: "พ", full: "Wednesday" },
+  { key: "thu", label: "พฤ", full: "Thursday" },
+  { key: "fri", label: "ศ", full: "Friday" },
+  { key: "sat", label: "ส", full: "Saturday" },
+  { key: "sun", label: "อา", full: "Sunday" },
+] as const;
+
+type DayKey = (typeof DAYS_OF_WEEK)[number]["key"];
 type TimeSlot = { h: number; m: number; s: number };
+type DaySchedule = Record<string, TimeSlot[]>;
+
 type CronData =
   | { type: "daily"; times: TimeSlot[] }
+  | { type: "weekly"; days: DaySchedule }
   | { type: "interval"; every: number; unit: "minutes" | "hours" };
 
 function parseCronData(raw: string | null): CronData {
@@ -40,6 +54,19 @@ function parseCronData(raw: string | null): CronData {
   } catch {
     return { type: "daily", times: [{ h: 9, m: 0, s: 0 }] };
   }
+}
+
+function defaultWeekly(): CronData {
+  return {
+    type: "weekly",
+    days: {
+      mon: [{ h: 9, m: 0, s: 0 }],
+      tue: [{ h: 9, m: 0, s: 0 }],
+      wed: [{ h: 9, m: 0, s: 0 }],
+      thu: [{ h: 9, m: 0, s: 0 }],
+      fri: [{ h: 9, m: 0, s: 0 }],
+    },
+  };
 }
 
 interface Props {
@@ -81,22 +108,54 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
     });
   }, [columnId]);
 
-  function addTimeSlot() {
+  // --- Daily helpers ---
+  function addDailySlot() {
     if (cronData.type !== "daily") return;
     setCronData({ ...cronData, times: [...cronData.times, { h: 12, m: 0, s: 0 }] });
   }
-
-  function removeTimeSlot(idx: number) {
-    if (cronData.type !== "daily") return;
-    if (cronData.times.length <= 1) return;
+  function removeDailySlot(idx: number) {
+    if (cronData.type !== "daily" || cronData.times.length <= 1) return;
     setCronData({ ...cronData, times: cronData.times.filter((_, i) => i !== idx) });
   }
-
-  function updateTimeSlot(idx: number, field: keyof TimeSlot, value: number) {
+  function updateDailySlot(idx: number, field: keyof TimeSlot, value: number) {
     if (cronData.type !== "daily") return;
     const times = [...cronData.times];
     times[idx] = { ...times[idx], [field]: value };
     setCronData({ ...cronData, times });
+  }
+
+  // --- Weekly helpers ---
+  function toggleDay(day: DayKey) {
+    if (cronData.type !== "weekly") return;
+    const days = { ...cronData.days };
+    if (days[day]) {
+      delete days[day];
+    } else {
+      days[day] = [{ h: 9, m: 0, s: 0 }];
+    }
+    setCronData({ ...cronData, days });
+  }
+  function addWeeklySlot(day: DayKey) {
+    if (cronData.type !== "weekly") return;
+    const days = { ...cronData.days };
+    days[day] = [...(days[day] || []), { h: 12, m: 0, s: 0 }];
+    setCronData({ ...cronData, days });
+  }
+  function removeWeeklySlot(day: DayKey, idx: number) {
+    if (cronData.type !== "weekly") return;
+    const days = { ...cronData.days };
+    const slots = [...(days[day] || [])];
+    if (slots.length <= 1) return;
+    days[day] = slots.filter((_, i) => i !== idx);
+    setCronData({ ...cronData, days });
+  }
+  function updateWeeklySlot(day: DayKey, idx: number, field: keyof TimeSlot, value: number) {
+    if (cronData.type !== "weekly") return;
+    const days = { ...cronData.days };
+    const slots = [...(days[day] || [])];
+    slots[idx] = { ...slots[idx], [field]: value };
+    days[day] = slots;
+    setCronData({ ...cronData, days });
   }
 
   function handleSave() {
@@ -129,101 +188,168 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
   const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black bg-white";
   const selectCls = inputCls;
 
-  function renderCronSchedule() {
-    const tabBtn = (active: boolean) =>
-      `px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
-        active ? "bg-teal-600 text-white shadow-sm" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-      }`;
+  const tabBtn = (active: boolean) =>
+    `px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
+      active ? "bg-teal-600 text-white shadow-sm" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+    }`;
 
+  function renderTimeSlotRow(
+    slot: TimeSlot,
+    onUpdate: (field: keyof TimeSlot, value: number) => void,
+    onRemove: (() => void) | null
+  ) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 flex-1 bg-white rounded-lg border border-gray-200 px-2 py-1.5">
+          <input
+            type="number" min={0} max={23} value={slot.h}
+            onChange={(e) => onUpdate("h", parseInt(e.target.value) || 0)}
+            className="w-10 text-center text-sm border-0 focus:outline-none bg-transparent"
+          />
+          <span className="text-gray-400 text-sm font-bold">:</span>
+          <input
+            type="number" min={0} max={59} value={slot.m}
+            onChange={(e) => onUpdate("m", parseInt(e.target.value) || 0)}
+            className="w-10 text-center text-sm border-0 focus:outline-none bg-transparent"
+          />
+          <span className="text-gray-400 text-sm font-bold">:</span>
+          <input
+            type="number" min={0} max={59} value={slot.s}
+            onChange={(e) => onUpdate("s", parseInt(e.target.value) || 0)}
+            className="w-10 text-center text-sm border-0 focus:outline-none bg-transparent"
+          />
+          <span className="text-[10px] text-gray-400 ml-1">HH:MM:SS</span>
+        </div>
+        {onRemove && (
+          <button onClick={onRemove} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  function renderCronSchedule() {
     return (
       <div className="bg-gray-50 rounded-lg p-3 space-y-3">
         {/* Mode tabs */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setCronData({ type: "daily", times: [{ h: 9, m: 0, s: 0 }] })}
             className={tabBtn(cronData.type === "daily")}
           >
-            Daily (หลายช่วงเวลา)
+            ทุกวัน
+          </button>
+          <button
+            onClick={() => setCronData(cronData.type === "weekly" ? cronData : defaultWeekly())}
+            className={tabBtn(cronData.type === "weekly")}
+          >
+            เลือกวัน
           </button>
           <button
             onClick={() => setCronData({ type: "interval", every: 30, unit: "minutes" })}
             className={tabBtn(cronData.type === "interval")}
           >
-            Interval (Loop)
+            Loop
           </button>
         </div>
 
-        {cronData.type === "daily" ? (
+        {/* Daily */}
+        {cronData.type === "daily" && (
           <div className="space-y-2">
-            <p className="text-xs text-gray-500">รันทุกวันตามเวลาที่กำหนด (เพิ่มได้หลายช่วง)</p>
+            <p className="text-xs text-gray-500">รันทุกวัน ตามเวลาที่กำหนด</p>
             {cronData.times.map((slot, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <div className="flex items-center gap-1 flex-1 bg-white rounded-lg border border-gray-200 px-2 py-1.5">
-                  <input
-                    type="number"
-                    min={0}
-                    max={23}
-                    value={slot.h}
-                    onChange={(e) => updateTimeSlot(idx, "h", parseInt(e.target.value) || 0)}
-                    className="w-12 text-center text-sm border-0 focus:outline-none bg-transparent"
-                  />
-                  <span className="text-gray-400 text-sm font-bold">:</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={slot.m}
-                    onChange={(e) => updateTimeSlot(idx, "m", parseInt(e.target.value) || 0)}
-                    className="w-12 text-center text-sm border-0 focus:outline-none bg-transparent"
-                  />
-                  <span className="text-gray-400 text-sm font-bold">:</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={slot.s}
-                    onChange={(e) => updateTimeSlot(idx, "s", parseInt(e.target.value) || 0)}
-                    className="w-12 text-center text-sm border-0 focus:outline-none bg-transparent"
-                  />
-                  <span className="text-[10px] text-gray-400 ml-1">HH:MM:SS</span>
-                </div>
-                {cronData.times.length > 1 && (
-                  <button
-                    onClick={() => removeTimeSlot(idx)}
-                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+              <div key={idx}>
+                {renderTimeSlotRow(
+                  slot,
+                  (field, val) => updateDailySlot(idx, field, val),
+                  cronData.times.length > 1 ? () => removeDailySlot(idx) : null
                 )}
               </div>
             ))}
-            <button
-              onClick={addTimeSlot}
-              className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 font-medium mt-1"
-            >
+            <button onClick={addDailySlot} className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 font-medium">
               <Plus size={12} /> เพิ่มช่วงเวลา
             </button>
           </div>
-        ) : (
+        )}
+
+        {/* Weekly */}
+        {cronData.type === "weekly" && (
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500">เลือกวันที่ต้องการ แล้วกำหนดเวลาแยกแต่ละวัน</p>
+
+            {/* Day toggles */}
+            <div className="flex gap-1">
+              {DAYS_OF_WEEK.map((d) => {
+                const active = !!cronData.days[d.key];
+                return (
+                  <button
+                    key={d.key}
+                    onClick={() => toggleDay(d.key)}
+                    title={d.full}
+                    className={`w-9 h-9 rounded-lg text-xs font-semibold transition-colors ${
+                      active
+                        ? "bg-teal-600 text-white shadow-sm"
+                        : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-100"
+                    }`}
+                  >
+                    {d.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Per-day time slots */}
+            {DAYS_OF_WEEK.filter((d) => cronData.days[d.key]).map((d) => {
+              const slots = cronData.days[d.key] || [];
+              return (
+                <div key={d.key} className="bg-white rounded-lg border border-gray-200 p-2.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-700">{d.full}</span>
+                    <button
+                      onClick={() => addWeeklySlot(d.key)}
+                      className="flex items-center gap-0.5 text-[10px] text-teal-600 hover:text-teal-800 font-medium"
+                    >
+                      <Plus size={10} /> เพิ่ม
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {slots.map((slot, idx) => (
+                      <div key={idx}>
+                        {renderTimeSlotRow(
+                          slot,
+                          (field, val) => updateWeeklySlot(d.key, idx, field, val),
+                          slots.length > 1 ? () => removeWeeklySlot(d.key, idx) : null
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {Object.keys(cronData.days).length === 0 && (
+              <p className="text-xs text-gray-400 text-center py-2">กดเลือกวันด้านบนเพื่อกำหนดเวลา</p>
+            )}
+          </div>
+        )}
+
+        {/* Interval */}
+        {cronData.type === "interval" && (
           <div className="space-y-2">
             <p className="text-xs text-gray-500">รันวนซ้ำตามรอบที่กำหนด</p>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">ทุก</span>
               <input
-                type="number"
-                min={1}
+                type="number" min={1}
                 max={cronData.unit === "hours" ? 24 : 1440}
                 value={cronData.every}
-                onChange={(e) =>
-                  setCronData({ ...cronData, every: parseInt(e.target.value) || 1 })
-                }
+                onChange={(e) => setCronData({ ...cronData, every: parseInt(e.target.value) || 1 })}
                 className="w-20 px-2 py-1.5 text-sm text-center border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black bg-white"
               />
               <select
                 value={cronData.unit}
-                onChange={(e) =>
-                  setCronData({ ...cronData, unit: e.target.value as "minutes" | "hours" })
-                }
+                onChange={(e) => setCronData({ ...cronData, unit: e.target.value as "minutes" | "hours" })}
                 className="px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black bg-white"
               >
                 <option value="minutes">นาที</option>
@@ -283,9 +409,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                 <button
                   onClick={() => setAutomationStatus("run")}
                   className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                    automationStatus === "run"
-                      ? "bg-green-600 text-white"
-                      : "text-gray-500 hover:bg-gray-100"
+                    automationStatus === "run" ? "bg-green-600 text-white" : "text-gray-500 hover:bg-gray-100"
                   }`}
                 >
                   Run
@@ -293,9 +417,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                 <button
                   onClick={() => setAutomationStatus("pause")}
                   className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                    automationStatus === "pause"
-                      ? "bg-orange-500 text-white"
-                      : "text-gray-500 hover:bg-gray-100"
+                    automationStatus === "pause" ? "bg-orange-500 text-white" : "text-gray-500 hover:bg-gray-100"
                   }`}
                 >
                   Pause
@@ -321,8 +443,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                 <div>
                   <label className={labelCls}>AI Model</label>
                   <input
-                    type="text"
-                    value={aiModel}
+                    type="text" value={aiModel}
                     onChange={(e) => setAiModel(e.target.value)}
                     placeholder="e.g. gpt-4o, claude-3.5-sonnet"
                     className={inputCls}
@@ -338,8 +459,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                 <span className="text-sm font-semibold text-gray-700">API Key</span>
               </div>
               <input
-                type="password"
-                value={apiKey}
+                type="password" value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="sk-..."
                 className={inputCls}
@@ -353,8 +473,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                 <span className="text-sm font-semibold text-gray-700">Webhook URL</span>
               </div>
               <input
-                type="url"
-                value={webhook}
+                type="url" value={webhook}
                 onChange={(e) => setWebhook(e.target.value)}
                 placeholder="https://..."
                 className={inputCls}
@@ -384,7 +503,6 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                   </button>
                 </label>
               </div>
-
               {cronEnabled && renderCronSchedule()}
             </div>
 
