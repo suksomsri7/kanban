@@ -21,6 +21,7 @@ import CardSubtasks from "./CardSubtasks";
 import CardDependencies from "./CardDependencies";
 import CardComments from "./CardComments";
 import CardAttachments from "./CardAttachments";
+import RichTextEditor, { RichTextReadonly } from "@/components/ui/RichTextEditor";
 import {
   getCardById,
   updateCard,
@@ -154,7 +155,7 @@ export default function CardModal({
     if (data) {
       setCard(data);
       setTitle(data.title);
-      setDescription((data.description || "").replace(/\\n/g, "\n"));
+      setDescription(data.description || "");
       setPriority(data.priority);
       setDueDate(data.dueDate ? format(new Date(data.dueDate), "yyyy-MM-dd") : "");
       const lf = data.lockedFields;
@@ -329,18 +330,14 @@ export default function CardModal({
                     Description
                   </label>
                   {pCanEditDesc ? (
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
+                    <RichTextEditor
+                      content={description}
+                      onChange={setDescription}
                       onBlur={handleSave}
-                      rows={3}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none"
                       placeholder="Add a description..."
                     />
                   ) : (
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                      {(description || "No description").replace(/\\n/g, "\n")}
-                    </p>
+                    <RichTextReadonly content={description || "No description"} />
                   )}
                 </div>
 
