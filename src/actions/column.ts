@@ -94,6 +94,59 @@ export async function deleteColumn(columnId: string) {
   return { success: true };
 }
 
+export async function getColumnSettings(columnId: string) {
+  await requireAuth();
+  return prisma.column.findUnique({
+    where: { id: columnId },
+    select: {
+      id: true,
+      title: true,
+      boardId: true,
+      aiProvider: true,
+      aiModel: true,
+      cronEnabled: true,
+      cronExpr: true,
+      cronTimezone: true,
+      apiKey: true,
+      webhook: true,
+      prompt: true,
+      automationStatus: true,
+    },
+  });
+}
+
+export async function updateColumnSettings(
+  columnId: string,
+  data: {
+    aiProvider?: string | null;
+    aiModel?: string | null;
+    cronEnabled?: boolean;
+    cronExpr?: string | null;
+    cronTimezone?: string | null;
+    apiKey?: string | null;
+    webhook?: string | null;
+    prompt?: string | null;
+    automationStatus?: string;
+  }
+) {
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const col = await prisma.column.findUnique({ where: { id: columnId }, select: { boardId: true } });
+  if (!col) return { error: "Column not found" };
+
+  const { allowed, error: permErr } = await requireBoardPermission(col.boardId, user.id, user.role, "canEditColumn");
+  if (!allowed) return { error: permErr || "Permission denied" };
+
+  await prisma.column.update({
+    where: { id: columnId },
+    data,
+  });
+
+  revalidatePath(`/board/${col.boardId}`);
+  return { success: true };
+}
+
 export async function reorderColumns(boardId: string, updates: { id: string; order: string }[]) {
   const session = await requireAuth();
   const user = session.user as SessionUser;

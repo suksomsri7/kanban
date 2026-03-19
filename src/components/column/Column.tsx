@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MoreHorizontal, Pencil, Trash2, GripVertical, Lock } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, GripVertical, Lock, Settings } from "lucide-react";
 import CardThumb from "@/components/card/CardThumb";
 import AddCard from "@/components/card/AddCard";
+import ColumnSettingsDialog from "./ColumnSettingsDialog";
 import { updateColumn, deleteColumn } from "@/actions/column";
 
 interface ColumnProps {
@@ -31,6 +32,7 @@ export default function Column({ column, boardId, labels, isEditor, canCreateCar
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(column.title);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const {
     attributes,
@@ -123,6 +125,14 @@ export default function Column({ column, boardId, labels, isEditor, canCreateCar
                 <div className="absolute right-0 top-8 z-20 bg-white rounded-lg border border-gray-200 shadow-lg py-1 w-36">
                   {canEditColumn && (
                     <button
+                      onClick={() => { setShowSettings(true); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Settings size={14} /> Settings
+                    </button>
+                  )}
+                  {canEditColumn && (
+                    <button
                       onClick={() => { setEditing(true); setMenuOpen(false); }}
                       className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                     >
@@ -170,6 +180,15 @@ export default function Column({ column, boardId, labels, isEditor, canCreateCar
             lastOrder={column.cards.length > 0 ? column.cards[column.cards.length - 1].order : null}
           />
         </div>
+      )}
+
+      {/* Column Settings Dialog */}
+      {showSettings && (
+        <ColumnSettingsDialog
+          columnId={column.id}
+          columnTitle={column.title}
+          onClose={() => setShowSettings(false)}
+        />
       )}
     </div>
   );

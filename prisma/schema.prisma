@@ -171,6 +171,16 @@ model Column {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  aiProvider  String?
+  aiModel     String?
+  cronEnabled Boolean  @default(false)
+  cronExpr    String?
+  cronTimezone String?
+  apiKey      String?  @db.Text
+  webhook     String?
+  prompt      String?  @db.Text
+  automationStatus String @default("pause")
+
   board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards Card[]
   cardRefs CardRef[]
