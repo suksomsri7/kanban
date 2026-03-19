@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, Bot, Clock, Key, Globe, FileText, Power } from "lucide-react";
+import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2 } from "lucide-react";
 import { getColumnSettings, updateColumnSettings } from "@/actions/column";
 
 const AI_PROVIDERS = [
@@ -28,6 +28,20 @@ const TIMEZONES = [
   "UTC",
 ];
 
+type TimeSlot = { h: number; m: number; s: number };
+type CronData =
+  | { type: "daily"; times: TimeSlot[] }
+  | { type: "interval"; every: number; unit: "minutes" | "hours" };
+
+function parseCronData(raw: string | null): CronData {
+  if (!raw) return { type: "daily", times: [{ h: 9, m: 0, s: 0 }] };
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { type: "daily", times: [{ h: 9, m: 0, s: 0 }] };
+  }
+}
+
 interface Props {
   columnId: string;
   columnTitle: string;
@@ -43,10 +57,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
   const [aiProvider, setAiProvider] = useState("");
   const [aiModel, setAiModel] = useState("");
   const [cronEnabled, setCronEnabled] = useState(false);
-  const [cronType, setCronType] = useState<"daily" | "interval">("daily");
-  const [cronHour, setCronHour] = useState("9");
-  const [cronMinute, setCronMinute] = useState("0");
-  const [cronSecond, setCronSecond] = useState("0");
+  const [cronData, setCronData] = useState<CronData>({ type: "daily", times: [{ h: 9, m: 0, s: 0 }] });
   const [cronTimezone, setCronTimezone] = useState("Asia/Bangkok");
   const [apiKey, setApiKey] = useState("");
   const [webhook, setWebhook] = useState("");
@@ -60,35 +71,32 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
         setAiModel(data.aiModel || "");
         setCronEnabled(data.cronEnabled);
         setCronTimezone(data.cronTimezone || "Asia/Bangkok");
+        setCronData(parseCronData(data.cronExpr));
         setApiKey(data.apiKey || "");
         setWebhook(data.webhook || "");
         setPrompt(data.prompt || "");
         setAutomationStatus(data.automationStatus || "pause");
-
-        if (data.cronExpr) {
-          parseCronExpr(data.cronExpr);
-        }
       }
       setLoading(false);
     });
   }, [columnId]);
 
-  function parseCronExpr(expr: string) {
-    const parts = expr.split(" ");
-    if (parts.length >= 5) {
-      setCronSecond(parts[0] || "0");
-      setCronMinute(parts[1] || "0");
-      setCronHour(parts[2] || "9");
-      if (parts[3] === "*" && parts[4] === "*") {
-        setCronType("daily");
-      } else {
-        setCronType("interval");
-      }
-    }
+  function addTimeSlot() {
+    if (cronData.type !== "daily") return;
+    setCronData({ ...cronData, times: [...cronData.times, { h: 12, m: 0, s: 0 }] });
   }
 
-  function buildCronExpr() {
-    return `${cronSecond} ${cronMinute} ${cronHour} * *`;
+  function removeTimeSlot(idx: number) {
+    if (cronData.type !== "daily") return;
+    if (cronData.times.length <= 1) return;
+    setCronData({ ...cronData, times: cronData.times.filter((_, i) => i !== idx) });
+  }
+
+  function updateTimeSlot(idx: number, field: keyof TimeSlot, value: number) {
+    if (cronData.type !== "daily") return;
+    const times = [...cronData.times];
+    times[idx] = { ...times[idx], [field]: value };
+    setCronData({ ...cronData, times });
   }
 
   function handleSave() {
@@ -100,7 +108,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
         aiProvider: aiProvider || null,
         aiModel: aiModel || null,
         cronEnabled,
-        cronExpr: cronEnabled ? buildCronExpr() : null,
+        cronExpr: cronEnabled ? JSON.stringify(cronData) : null,
         cronTimezone: cronEnabled ? cronTimezone : null,
         apiKey: apiKey || null,
         webhook: webhook || null,
@@ -120,6 +128,128 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
   const labelCls = "block text-xs font-medium text-gray-500 mb-1";
   const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black bg-white";
   const selectCls = inputCls;
+
+  function renderCronSchedule() {
+    const tabBtn = (active: boolean) =>
+      `px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
+        active ? "bg-teal-600 text-white shadow-sm" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+      }`;
+
+    return (
+      <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+        {/* Mode tabs */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setCronData({ type: "daily", times: [{ h: 9, m: 0, s: 0 }] })}
+            className={tabBtn(cronData.type === "daily")}
+          >
+            Daily (หลายช่วงเวลา)
+          </button>
+          <button
+            onClick={() => setCronData({ type: "interval", every: 30, unit: "minutes" })}
+            className={tabBtn(cronData.type === "interval")}
+          >
+            Interval (Loop)
+          </button>
+        </div>
+
+        {cronData.type === "daily" ? (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500">รันทุกวันตามเวลาที่กำหนด (เพิ่มได้หลายช่วง)</p>
+            {cronData.times.map((slot, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <div className="flex items-center gap-1 flex-1 bg-white rounded-lg border border-gray-200 px-2 py-1.5">
+                  <input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={slot.h}
+                    onChange={(e) => updateTimeSlot(idx, "h", parseInt(e.target.value) || 0)}
+                    className="w-12 text-center text-sm border-0 focus:outline-none bg-transparent"
+                  />
+                  <span className="text-gray-400 text-sm font-bold">:</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={slot.m}
+                    onChange={(e) => updateTimeSlot(idx, "m", parseInt(e.target.value) || 0)}
+                    className="w-12 text-center text-sm border-0 focus:outline-none bg-transparent"
+                  />
+                  <span className="text-gray-400 text-sm font-bold">:</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={slot.s}
+                    onChange={(e) => updateTimeSlot(idx, "s", parseInt(e.target.value) || 0)}
+                    className="w-12 text-center text-sm border-0 focus:outline-none bg-transparent"
+                  />
+                  <span className="text-[10px] text-gray-400 ml-1">HH:MM:SS</span>
+                </div>
+                {cronData.times.length > 1 && (
+                  <button
+                    onClick={() => removeTimeSlot(idx)}
+                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={addTimeSlot}
+              className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 font-medium mt-1"
+            >
+              <Plus size={12} /> เพิ่มช่วงเวลา
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500">รันวนซ้ำตามรอบที่กำหนด</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">ทุก</span>
+              <input
+                type="number"
+                min={1}
+                max={cronData.unit === "hours" ? 24 : 1440}
+                value={cronData.every}
+                onChange={(e) =>
+                  setCronData({ ...cronData, every: parseInt(e.target.value) || 1 })
+                }
+                className="w-20 px-2 py-1.5 text-sm text-center border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black bg-white"
+              />
+              <select
+                value={cronData.unit}
+                onChange={(e) =>
+                  setCronData({ ...cronData, unit: e.target.value as "minutes" | "hours" })
+                }
+                className="px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black bg-white"
+              >
+                <option value="minutes">นาที</option>
+                <option value="hours">ชั่วโมง</option>
+              </select>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              {cronData.unit === "minutes"
+                ? `= รัน ${Math.floor(1440 / cronData.every)} ครั้ง/วัน (ทุก ${cronData.every} นาที)`
+                : `= รัน ${Math.floor(24 / cronData.every)} ครั้ง/วัน (ทุก ${cronData.every} ชม.)`}
+            </p>
+          </div>
+        )}
+
+        {/* Timezone */}
+        <div className="pt-2 border-t border-gray-200">
+          <label className={labelCls}>Timezone</label>
+          <select value={cronTimezone} onChange={(e) => setCronTimezone(e.target.value)} className={selectCls}>
+            {TIMEZONES.map((tz) => (
+              <option key={tz} value={tz}>{tz}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -236,7 +366,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-1.5">
                   <Clock size={14} className="text-teal-500" />
-                  <span className="text-sm font-semibold text-gray-700">Cron Schedule</span>
+                  <span className="text-sm font-semibold text-gray-700">Schedule</span>
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <span className="text-xs text-gray-500">{cronEnabled ? "Enabled" : "Disabled"}</span>
@@ -255,73 +385,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                 </label>
               </div>
 
-              {cronEnabled && (
-                <div className="bg-gray-50 rounded-lg p-3 space-y-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setCronType("daily")}
-                      className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                        cronType === "daily" ? "bg-teal-600 text-white" : "bg-white border text-gray-600"
-                      }`}
-                    >
-                      Daily
-                    </button>
-                    <button
-                      onClick={() => setCronType("interval")}
-                      className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                        cronType === "interval" ? "bg-teal-600 text-white" : "bg-white border text-gray-600"
-                      }`}
-                    >
-                      Custom
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className={labelCls}>Hour</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={23}
-                        value={cronHour}
-                        onChange={(e) => setCronHour(e.target.value)}
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Minute</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={59}
-                        value={cronMinute}
-                        onChange={(e) => setCronMinute(e.target.value)}
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Second</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={59}
-                        value={cronSecond}
-                        onChange={(e) => setCronSecond(e.target.value)}
-                        className={inputCls}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={labelCls}>Timezone</label>
-                    <select value={cronTimezone} onChange={(e) => setCronTimezone(e.target.value)} className={selectCls}>
-                      {TIMEZONES.map((tz) => (
-                        <option key={tz} value={tz}>{tz}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
+              {cronEnabled && renderCronSchedule()}
             </div>
 
             {/* Prompt */}
