@@ -55,7 +55,7 @@ export async function authenticateOpenClaw(
   if (column.automationType !== "openclaw") {
     return {
       error: NextResponse.json(
-        { success: false, error: "OpenClaw is not enabled for this column" },
+        { success: false, error: "Agent is not enabled for this column" },
         { status: 403 }
       ),
     };

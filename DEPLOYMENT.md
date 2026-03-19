@@ -137,7 +137,7 @@ nano .env  # หรือใช้ vim / vi
 | `NEXTAUTH_URL` | URL หลักของเว็บ (ต้องตรงกับที่ user เข้า) | `https://kanban.yourdomain.com` หรือ `http://YOUR_VPS_IP:3000` |
 | `NEXTAUTH_SECRET` | Secret สำหรับ NextAuth (ขั้นต่ำ 32 ตัวอักษร) | สร้างด้วย `openssl rand -base64 32` |
 | `NEXT_PUBLIC_PUSHER_HOST` | Host สำหรับ Real-time (ใช้ domain หรือ IP เดียวกับเว็บ) | `kanban.yourdomain.com` หรือ `YOUR_VPS_IP` |
-| `API_KEY` | API Key สำหรับ Agent (OpenClaw) | สร้างค่าที่ปลอดภัย เช่น `openssl rand -hex 32` |
+| `API_KEY` | API Key สำหรับ Agent | สร้างค่าที่ปลอดภัย เช่น `openssl rand -hex 32` |
 | `API_AGENT_USERNAME` | username ที่ Agent จะใช้สิทธิ์ | `admin` (ต้องมี user นี้ในระบบ) |
 
 ### 4.3 สร้างค่า Secret
@@ -233,9 +233,9 @@ docker compose logs -f app
 docker compose up -d --build
 ```
 
-### 5.4 Deploy หลังอัปเดต code (หรือคู่มือ API / OpenClaw)
+### 5.4 Deploy หลังอัปเดต code (หรือคู่มือ API / Agent)
 
-เมื่อแก้ไข code, AGENT_API.md หรือ OPENCLAW_PROMPTS.md แล้ว ให้ build และรันใหม่:
+เมื่อแก้ไข code, AGENT_API.md หรือ AGENT_PROMPT.md แล้ว ให้ build และรันใหม่:
 
 ```bash
 cd /path/to/kanban

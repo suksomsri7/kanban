@@ -332,7 +332,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                   }`}
                 >
                   <Zap size={16} />
-                  <span className="text-sm font-medium">OpenClaw</span>
+                  <span className="text-sm font-medium">Agent</span>
                 </button>
               </div>
             </div>
@@ -365,13 +365,13 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
               </>
             )}
 
-            {/* OpenClaw Mode */}
+            {/* Agent Mode */}
             {automationType === "openclaw" && (
               <>
                 <div>
                   <div className="flex items-center gap-1.5 mb-3">
                     <Zap size={14} className="text-orange-500" />
-                    <span className="text-sm font-semibold text-gray-700">OpenClaw Connection</span>
+                    <span className="text-sm font-semibold text-gray-700">Agent Connection</span>
                   </div>
                   <div className="space-y-3">
                     <div>
