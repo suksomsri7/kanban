@@ -110,7 +110,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
 
   function buildWebhookUrl(key: string) {
     const base = typeof window !== "undefined" ? window.location.origin : "";
-    return `${base}/api/v1/openclaw/${columnId}?key=${key}`;
+    return `${base}/api/v1/agent/${columnId}?key=${key}`;
   }
 
   function regenerateWebhook() {
@@ -145,7 +145,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
         const key = data.openclawApiKey || generateApiKey();
         setOpenclawApiKey(key);
         const base = typeof window !== "undefined" ? window.location.origin : "";
-        setOpenclawUrl(data.openclawUrl || `${base}/api/v1/openclaw/${columnId}?key=${key}`);
+        setOpenclawUrl(data.openclawUrl || `${base}/api/v1/agent/${columnId}?key=${key}`);
       }
       setLoading(false);
     });
@@ -390,7 +390,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                     <div>
                       <label className={labelCls}>Agent Prompt Guide</label>
                       <div className="flex gap-1.5">
-                        <div className={`${inputCls} bg-gray-50 text-xs flex-1 flex items-center gap-1.5 text-blue-600 cursor-pointer hover:text-blue-800`} onClick={() => window.open(`${window.location.origin}/api/v1/openclaw/agent-prompt`, "_blank")}>
+                        <div className={`${inputCls} bg-gray-50 text-xs flex-1 flex items-center gap-1.5 text-blue-600 cursor-pointer hover:text-blue-800`} onClick={() => window.open(`${window.location.origin}/api/v1/agent/agent-prompt`, "_blank")}>
                           <FileText size={12} />
                           <span className="truncate">agent_prompt.md</span>
                           <ExternalLink size={10} className="shrink-0 ml-auto opacity-50" />
@@ -398,7 +398,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                         <button
                           onClick={async () => {
                             try {
-                              const res = await fetch(`${window.location.origin}/api/v1/openclaw/agent-prompt`);
+                              const res = await fetch(`${window.location.origin}/api/v1/agent/agent-prompt`);
                               const text = await res.text();
                               copyToClipboard(text.replace(/\{WEBHOOK_URL\}/g, openclawUrl), "prompt");
                             } catch { copyToClipboard("", "prompt"); }
