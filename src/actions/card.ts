@@ -415,9 +415,20 @@ export async function updateCardLockedFields(
 }
 
 export async function getBoardsForPicker() {
-  await requireAuth();
-  return prisma.board.findMany({
-    where: { isArchived: false },
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+  const isSuperAdmin = user.role === "SUPER_ADMIN";
+
+  const boards = await prisma.board.findMany({
+    where: {
+      isArchived: false,
+      ...(!isSuperAdmin ? {
+        OR: [
+          { ownerId: user.id },
+          { members: { some: { userId: user.id } } },
+        ],
+      } : {}),
+    },
     select: {
       id: true,
       title: true,
@@ -428,6 +439,10 @@ export async function getBoardsForPicker() {
     },
     orderBy: { title: "asc" },
   });
+  // #region agent log
+  fetch('http://127.0.0.1:7492/ingest/8743131b-3026-4056-b195-fc1daa1be99f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3e7644'},body:JSON.stringify({sessionId:'3e7644',location:'card.ts:getBoardsForPicker',message:'boards after filter',data:{userId:user.id,userRole:user.role,count:boards.length,titles:boards.map(b=>b.title)},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  return boards;
 }
 
 export async function duplicateCard(
