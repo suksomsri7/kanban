@@ -47,11 +47,6 @@ function defaultWeekly(): CronData {
 }
 
 const OPENCLAW_PERMS = [
-  { group: "Column", items: [
-    { key: "canAddColumn", label: "Add Column" },
-    { key: "canEditColumn", label: "Edit Column" },
-    { key: "canDeleteColumn", label: "Delete Column" },
-  ]},
   { group: "Card", items: [
     { key: "canCreateCard", label: "Create Card" },
     { key: "canDeleteCard", label: "Delete Card" },
@@ -398,31 +393,33 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
               </>
             )}
 
-            {/* Webhook (shared) */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2"><Globe size={14} className="text-blue-500" /><span className="text-sm font-semibold text-gray-700">Webhook URL</span></div>
-              <input type="url" value={webhook} onChange={(e) => setWebhook(e.target.value)} placeholder="https://..." className={inputCls} />
-            </div>
+            {/* AI Config only: Webhook, Schedule, Prompt */}
+            {automationType === "ai_config" && (
+              <>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2"><Globe size={14} className="text-blue-500" /><span className="text-sm font-semibold text-gray-700">Webhook URL</span></div>
+                  <input type="url" value={webhook} onChange={(e) => setWebhook(e.target.value)} placeholder="https://..." className={inputCls} />
+                </div>
 
-            {/* Cron (shared) */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1.5"><Clock size={14} className="text-teal-500" /><span className="text-sm font-semibold text-gray-700">Schedule</span></div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <span className="text-xs text-gray-500">{cronEnabled ? "Enabled" : "Disabled"}</span>
-                  <button onClick={() => setCronEnabled(!cronEnabled)} className={`w-9 h-5 rounded-full transition-colors relative ${cronEnabled ? "bg-teal-600" : "bg-gray-300"}`}>
-                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${cronEnabled ? "translate-x-4" : "translate-x-0.5"}`} />
-                  </button>
-                </label>
-              </div>
-              {cronEnabled && renderCronSchedule()}
-            </div>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-1.5"><Clock size={14} className="text-teal-500" /><span className="text-sm font-semibold text-gray-700">Schedule</span></div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-xs text-gray-500">{cronEnabled ? "Enabled" : "Disabled"}</span>
+                      <button onClick={() => setCronEnabled(!cronEnabled)} className={`w-9 h-5 rounded-full transition-colors relative ${cronEnabled ? "bg-teal-600" : "bg-gray-300"}`}>
+                        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${cronEnabled ? "translate-x-4" : "translate-x-0.5"}`} />
+                      </button>
+                    </label>
+                  </div>
+                  {cronEnabled && renderCronSchedule()}
+                </div>
 
-            {/* Prompt (shared) */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2"><FileText size={14} className="text-purple-500" /><span className="text-sm font-semibold text-gray-700">Prompt</span></div>
-              <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Enter AI prompt for this stage..." rows={5} className={`${inputCls} resize-y`} />
-            </div>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2"><FileText size={14} className="text-purple-500" /><span className="text-sm font-semibold text-gray-700">Prompt</span></div>
+                  <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Enter AI prompt for this stage..." rows={5} className={`${inputCls} resize-y`} />
+                </div>
+              </>
+            )}
           </div>
         )}
 
