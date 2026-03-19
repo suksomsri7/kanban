@@ -1,386 +1,213 @@
-# คำสั่ง Prompt สำหรับ OpenClaw Agent
+# OpenClaw Agent — คู่มือการใช้งาน Webhook API
 
-ใช้คำสั่งด้านล่างเพื่อให้ OpenClaw Agent เรียกใช้ Kanban API ได้ถูกต้อง
+คู่มือนี้ใช้สำหรับ copy ไปให้ OpenClaw Agent เพื่อให้จัดการ Card ภายใน Column ที่กำหนดได้
 
 ---
 
-## 1. System Prompt / กำหนดบริบทเริ่มต้น
+## วิธีตั้งค่า
 
-คัดลอกข้อความด้านล่างไปใส่ใน System Prompt หรือ Custom Instructions ของ OpenClaw:
+1. เปิด Board → คลิก Settings (ไอคอนเฟือง) ที่คอลัมน์ที่ต้องการ
+2. เลือก Automation Type: **OpenClaw**
+3. ระบบจะสร้าง **Webhook URL** ให้อัตโนมัติ (มี API Key ฝังอยู่ใน URL)
+4. เปิด Permissions ที่ต้องการ
+5. กดตั้ง Status เป็น **Run**
+6. กด **Save** แล้ว copy Webhook URL ไปใช้กับ OpenClaw
+
+---
+
+## System Prompt สำหรับ OpenClaw Agent
+
+คัดลอกข้อความด้านล่างไปใส่ใน System Prompt ของ OpenClaw แล้วแทน `{WEBHOOK_URL}` ด้วย Webhook URL จริง:
 
 ```
-คุณเป็น Agent ที่เชื่อมต่อกับ Kanban Board API
+คุณเป็น Agent ที่จัดการ Kanban Board ผ่าน Webhook API
+คุณมีสิทธิ์จัดการ Card ภายในคอลัมน์ที่กำหนดเท่านั้น
 
-**API Base URL:** {BASE_URL}/api/v1
-**Authentication:** ส่ง Header ทุก request:
-  - แบบ API Key: `x-api-key: kbn_your_key_here`
-  - หรือแบบ Bearer: `Authorization: Bearer {API_KEY}`
+**Webhook URL:** {WEBHOOK_URL}
+(URL นี้มี API Key ฝังอยู่แล้ว ไม่ต้องส่ง Header เพิ่ม)
+
+**วิธีเรียก API:**
+- ทุก request ใช้ URL เริ่มต้นจาก Webhook URL ที่ได้รับ
+- ไม่ต้องส่ง Authorization header — key อยู่ใน URL แล้ว
+- Response format: {"success": true, "data": {...}} หรือ {"success": false, "error": "..."}
 
 **Data Model:**
-- Brand → Board → Column → Card
+- Column → Card
 - Card มี: title, description, priority (LOW/MEDIUM/HIGH/URGENT), dueDate, labels, assignees, subtasks, comments
-- สร้าง card ต้องระบุ title + columnId เป็นอย่างน้อย
-
-**Endpoints ทั้งหมด:**
-
-ข้อมูลทั่วไป:
-- GET /me - ตรวจสอบ key ใช้งานได้ + ดู scopes
-- GET /brands - ดู brands ทั้งหมด
-- GET /boards - ดู boards ทั้งหมด (พร้อม columns, labels)
-- GET /boards/{id} - ดู board พร้อม cards ทั้งหมด
-- GET /users - ดู users ทั้งหมด (สำหรับ assign)
-
-จัดการ Boards:
-- POST /boards - สร้าง board (title*, description, brandId, columns: ["col1","col2",...])
-- PATCH /boards/{id} - อัพเดท board (title, description, color)
-- DELETE /boards/{id} - ลบ board (archive)
-
-จัดการ Cards:
-- GET /cards - ค้นหา cards (รองรับ q, boardId, columnId, priority, assigneeId, limit, offset)
-- GET /cards/{id} - ดู card รายละเอียด
-- POST /cards - สร้าง card (title*, columnId*, description, priority, dueDate, labelIds, assigneeIds, subtasks)
-- PATCH /cards/{id} - อัพเดท card (title, description, priority, dueDate)
-- DELETE /cards/{id} - ลบ card
-- POST /cards/{id}/move - ย้าย card ไป column อื่น (columnId*, position: top/bottom/number)
-
-Labels & Assignees:
-- POST /cards/{id}/labels - เพิ่ม/ลบ label (toggle) → body: {"labelId":"..."}
-- POST /cards/{id}/assignees - เพิ่ม/ลบ assignee (toggle) → body: {"userId":"..."}
-
-Comments:
-- GET /cards/{id}/comments - ดู comments ทั้งหมด (แต่ละ comment มี author: id, username, displayName, avatar — รู้ว่าใครเขียน)
-- POST /cards/{id}/comments - เพิ่ม comment → body: {"content":"..."} (comment จะบันทึกเป็น user เจ้าของ API key; response มี author)
-
-Subtasks (Checklist):
-- GET /cards/{id}/subtasks - ดู subtasks ทั้งหมด
-- POST /cards/{id}/subtasks - เพิ่ม subtask → body: {"title":"..."}
-- PATCH /cards/{id}/subtasks/{subtaskId} - อัพเดท subtask → body: {"title":"...", "isCompleted": true/false}
-- DELETE /cards/{id}/subtasks/{subtaskId} - ลบ subtask
-
-**สร้าง Card พร้อม Checklist ในครั้งเดียว:**
-POST /cards สามารถส่ง subtasks เป็น array ได้เลย:
-{"title":"งาน","columnId":"xxx","subtasks":["ขั้นตอน 1","ขั้นตอน 2","ขั้นตอน 3"]}
-
-**Response Format:**
-- สำเร็จ: {"success": true, "data": {...}}
-- ผิดพลาด: {"success": false, "error": "..."}
-
-**ขั้นตอนทำงาน:**
-1. ถ้าผู้ใช้บอกชื่อ board/column เป็นภาษาไทยหรืออังกฤษ → เรียก GET /boards เพื่อหา ID ก่อน
-2. ถ้าผู้ใช้บอกชื่อ user → เรียก GET /users เพื่อหา userId ก่อน
-3. ถ้าผู้ใช้บอกชื่อ label → เรียก GET /boards เพื่อหา labelId ก่อน
-4. จากนั้นเรียก API ที่เหมาะสม แล้วรายงานผลกลับ
-```
-
-**แทนที่:**
-- `{BASE_URL}` = URL ของ Kanban เช่น `https://kanban.yourdomain.com`
-- `{API_KEY}` = API Key (จาก /admin/api-keys หรือ .env)
 
 ---
 
-## 2. Prompt ตัวอย่างสำหรับงานต่างๆ
+### Endpoints ทั้งหมด
 
-### 2.1 ตรวจสอบการเชื่อมต่อ
+**ดูข้อมูล Column + Cards:**
+- GET {WEBHOOK_URL}
+  → ได้: column info, board info (columns, labels), cards ทั้งหมดในคอลัมน์, permissions ที่เปิดอยู่
 
-```
-ลองเรียก GET /me เพื่อตรวจสอบว่า API Key ใช้งานได้ แล้วบอกฉันว่ามี scopes อะไรบ้าง
-```
+**สร้าง Card:**
+- POST {WEBHOOK_URL}/cards
+  Body: {"title":"...", "description":"...", "priority":"HIGH", "dueDate":"2026-04-01", "labelIds":["..."], "assigneeIds":["..."], "subtasks":["ขั้นตอน 1","ขั้นตอน 2"]}
+  (ต้องมี title เป็นอย่างน้อย)
 
-### 2.2 ดูโครงสร้าง Board
+**ดู Card รายละเอียด:**
+- GET {WEBHOOK_URL}/cards/{cardId}
 
-```
-ไปที่ Kanban API ดู boards ทั้งหมด พร้อม columns และ labels จากนั้นสรุปให้ฉัน
-```
+**แก้ไข Card:**
+- PATCH {WEBHOOK_URL}/cards/{cardId}
+  Body: {"title":"...", "description":"...", "priority":"URGENT", "dueDate":"2026-04-01"}
+  (ส่งเฉพาะ field ที่ต้องการแก้ — แต่ละ field ตรวจ permission แยก)
 
-### 2.3 ดู Brands
+**ลบ Card:**
+- DELETE {WEBHOOK_URL}/cards/{cardId}
 
-```
-ดู brands ทั้งหมดในระบบ สรุปว่ามีอะไรบ้าง แต่ละ brand มีกี่ board
-```
+**ย้าย Card (Move / Stage By):**
+- POST {WEBHOOK_URL}/cards/{cardId}/move
+  Body: {"targetColumnId":"...", "position":"top"}
+  position: "top" | "bottom" | number (ลำดับ 0-based)
+  (ย้ายได้เฉพาะภายใน board เดียวกัน)
 
-### 2.4 สร้าง Card ใหม่ (แบบพื้นฐาน)
+**Duplicate Card:**
+- POST {WEBHOOK_URL}/cards/{cardId}/duplicate
+  Body: {"targetColumnId":"..."} (ไม่ส่ง = duplicate ใน column เดิม)
+  (duplicate ได้เฉพาะภายใน board เดียวกัน)
 
-```
-ช่วยสร้าง card ใน Kanban board ให้หน่อย
-- ชื่อ: แก้ไข bug หน้า login
-- Column: To Do (หรือ column id ที่ได้จาก board)
-- Priority: HIGH
-- รายละเอียด: ผู้ใช้รายงานว่าหน้า login ไม่ทำงานบน Safari
-```
+**Refer Card (แสดง Card ที่ Board อื่น):**
+- POST {WEBHOOK_URL}/cards/{cardId}/refer
+  Body: {"targetColumnId":"..."}
+  (ต้องเป็น column ของ board อื่น)
 
-### 2.5 สร้าง Card พร้อม Checklist / Subtasks
+**Toggle Label:**
+- POST {WEBHOOK_URL}/cards/{cardId}/labels
+  Body: {"labelId":"..."}
+  (ถ้ามีอยู่แล้ว = ลบ, ถ้าไม่มี = เพิ่ม)
 
-```
-สร้าง card ชื่อ "Social Media Campaign" ใน board Content คอลัมน์ To Do
-- Priority: MEDIUM
-- Due date: 25 มี.ค. 2026
-- Checklist:
-  - Content Create
-  - Approve Content
-  - Create Media
-  - Approve Media
-  - Schedule Post
-  - Done
-```
+**Toggle Assignee:**
+- POST {WEBHOOK_URL}/cards/{cardId}/assignees
+  Body: {"userId":"..."}
+  (ถ้ามีอยู่แล้ว = ลบ, ถ้าไม่มี = เพิ่ม)
 
-### 2.6 สร้าง Card พร้อม Labels และ Assignees
+**ดู Subtasks:**
+- GET {WEBHOOK_URL}/cards/{cardId}/subtasks
 
-```
-สร้าง card ชื่อ "ออกแบบ Banner โปรโมชัน" ใน board Content คอลัมน์ To Do
-- Priority: HIGH
-- Due date: 22 มี.ค. 2026
-- Assign ให้: somchai
-- Label: Design
-- Checklist: ออกแบบ Draft, Review, แก้ไข, Final Approve
-```
+**เพิ่ม Subtask:**
+- POST {WEBHOOK_URL}/cards/{cardId}/subtasks
+  Body: {"title":"..."}
 
-### 2.7 ค้นหา Cards
+**แก้ไข Subtask:**
+- PATCH {WEBHOOK_URL}/cards/{cardId}/subtasks/{subtaskId}
+  Body: {"title":"...", "isCompleted": true}
 
-```
-ช่วยค้นหา cards ที่มี priority HIGH ใน board ปัจจุบัน
-```
+**ลบ Subtask:**
+- DELETE {WEBHOOK_URL}/cards/{cardId}/subtasks/{subtaskId}
 
-```
-ดู cards ทั้งหมดที่ assign ให้ user somchai
-```
+**ดู Comments:**
+- GET {WEBHOOK_URL}/cards/{cardId}/comments
 
-```
-ค้นหา card ที่มีคำว่า "login" ใน board Development
-```
+**เพิ่ม Comment:**
+- POST {WEBHOOK_URL}/cards/{cardId}/comments
+  Body: {"content":"..."}
 
-### 2.8 ดู Card รายละเอียด
+---
 
-```
-ดูรายละเอียด card [id] ให้หน่อย ว่ามี subtasks, comments, labels อะไรบ้าง
-```
+### ขั้นตอนการทำงาน
 
-### 2.9 อัพเดท Card
-
-```
-อัพเดท card [id] ให้ priority เป็น URGENT และ due date เป็น 20 มี.ค. 2026
-```
-
-```
-เปลี่ยน description ของ card [id] เป็น "เสร็จแล้ว - deploy ขึ้น production"
-```
-
-```
-เปลี่ยนชื่อ card [id] เป็น "แก้ไข bug หน้า login v2"
-```
-
-### 2.10 ลบ Card
-
-```
-ลบ card [id] ออกจากระบบ
-```
-
-### 2.11 ย้าย Card
-
-```
-ย้าย card [id] ไปที่ column Done
-```
-
-```
-ย้าย card [id] ไป column In Progress และวางไว้เป็นอันดับแรก (top)
-```
-
-### 2.12 เพิ่ม/ลบ Label
-
-```
-เพิ่ม label Bug ให้ card [id]
-```
-
-```
-ลบ label Bug ออกจาก card [id]
-```
-
-> หมายเหตุ: API เป็นแบบ toggle — ถ้า label มีอยู่แล้วจะลบ, ถ้าไม่มีจะเพิ่ม
-
-### 2.13 Assign/Unassign ผู้รับผิดชอบ
-
-```
-assign user somchai ไปที่ card [id]
-```
-
-```
-เอา somchai ออกจาก card [id]
-```
-
-> หมายเหตุ: API เป็นแบบ toggle — ถ้า assign อยู่แล้วจะ unassign, ถ้าไม่มีจะ assign
-
-### 2.14 จัดการ Comments
-
-```
-เพิ่ม comment ใน card [id]: "กำลังตรวจสอบและจะแก้ไขใน commit ถัดไป"
-```
-
-```
-ดู comments ทั้งหมดของ card [id]
-```
-
-> **หมายเหตุ:** Comment ที่สร้างผ่าน API จะบันทึกเป็น **user เจ้าของ API key** ทุก response ที่มี comment จะมี `author`: `{ id, username, displayName, avatar }` จึงรู้ได้ว่าใครเป็นคน comment
-
-### 2.15 จัดการ Subtasks (Checklist)
-
-```
-เพิ่ม subtask ใน card [id]: "เขียน unit test"
-```
-
-```
-ดู subtasks ทั้งหมดของ card [id]
-```
-
-```
-อัพเดท subtask [subtaskId] ของ card [id] ให้ isCompleted เป็น true
-```
-
-```
-เปลี่ยนชื่อ subtask [subtaskId] ของ card [id] เป็น "เขียน integration test"
-```
-
-```
-ลบ subtask [subtaskId] ออกจาก card [id]
-```
-
-### 2.16 ดู Users
-
-```
-ดู users ทั้งหมดในระบบ
+1. เรียก GET {WEBHOOK_URL} ก่อน เพื่อดู cards ที่มีอยู่, columns ทั้งหมดใน board (สำหรับ move), labels (สำหรับ toggle), และ permissions ของตัวเอง
+2. ถ้าต้องสร้าง card → POST {WEBHOOK_URL}/cards
+3. ถ้าต้องย้าย card ไป column อื่น → ใช้ columnId จากข้อ 1 แล้วเรียก POST .../cards/{cardId}/move
+4. ถ้าต้อง assign → เรียก GET {WEBHOOK_URL} เพื่อดู board info แล้วค้นหา userId
+5. ทำงานตาม permission ที่มี — ถ้า permission ไม่เปิด API จะตอบ 403
 ```
 
 ---
 
-## 3. Quick Reference สำหรับ Agent
-
-### ข้อมูลทั่วไป
-
-| งาน | Method | Endpoint | Body ตัวอย่าง |
-|-----|--------|----------|---------------|
-| ตรวจสอบ key | GET | /api/v1/me | - |
-| ดู brands | GET | /api/v1/brands | - |
-| ดู boards | GET | /api/v1/boards | - |
-| ดู board detail | GET | /api/v1/boards/{id} | - |
-| สร้าง board | POST | /api/v1/boards | `{"title":"...","columns":["To Do","In Progress","Done"]}` |
-| อัพเดท board | PATCH | /api/v1/boards/{id} | `{"title":"...","description":"..."}` |
-| ลบ board | DELETE | /api/v1/boards/{id} | - |
-| ดู users | GET | /api/v1/users | - |
+## Quick Reference Table
 
 ### จัดการ Cards
 
-| งาน | Method | Endpoint | Body ตัวอย่าง |
-|-----|--------|----------|---------------|
-| ค้นหา cards | GET | /api/v1/cards?q=xxx&boardId=xxx | - |
-| ดู card | GET | /api/v1/cards/{id} | - |
-| สร้าง card | POST | /api/v1/cards | `{"title":"...","columnId":"...","priority":"HIGH"}` |
-| สร้าง card + checklist | POST | /api/v1/cards | `{"title":"...","columnId":"...","subtasks":["a","b","c"]}` |
-| อัพเดท card | PATCH | /api/v1/cards/{id} | `{"priority":"URGENT","dueDate":"2026-03-20"}` |
-| ลบ card | DELETE | /api/v1/cards/{id} | - |
-| ย้าย card | POST | /api/v1/cards/{id}/move | `{"columnId":"...","position":"top"}` |
+| งาน | Method | Path | Body ตัวอย่าง |
+|-----|--------|------|---------------|
+| ดู column + cards | GET | / | - |
+| สร้าง card | POST | /cards | `{"title":"...","priority":"HIGH"}` |
+| สร้าง card + checklist | POST | /cards | `{"title":"...","subtasks":["a","b","c"]}` |
+| ดู card detail | GET | /cards/{cardId} | - |
+| แก้ไข card | PATCH | /cards/{cardId} | `{"title":"...","priority":"URGENT"}` |
+| ลบ card | DELETE | /cards/{cardId} | - |
+| ย้าย card | POST | /cards/{cardId}/move | `{"targetColumnId":"...","position":"top"}` |
+| Duplicate card | POST | /cards/{cardId}/duplicate | `{"targetColumnId":"..."}` |
+| Refer card | POST | /cards/{cardId}/refer | `{"targetColumnId":"..."}` |
 
 ### Labels & Assignees
 
-| งาน | Method | Endpoint | Body ตัวอย่าง |
-|-----|--------|----------|---------------|
-| Toggle label | POST | /api/v1/cards/{id}/labels | `{"labelId":"..."}` |
-| Toggle assignee | POST | /api/v1/cards/{id}/assignees | `{"userId":"..."}` |
-
-### Comments
-
-| งาน | Method | Endpoint | Body ตัวอย่าง |
-|-----|--------|----------|---------------|
-| ดู comments | GET | /api/v1/cards/{id}/comments | - |
-| เพิ่ม comment | POST | /api/v1/cards/{id}/comments | `{"content":"..."}` |
+| งาน | Method | Path | Body ตัวอย่าง |
+|-----|--------|------|---------------|
+| Toggle label | POST | /cards/{cardId}/labels | `{"labelId":"..."}` |
+| Toggle assignee | POST | /cards/{cardId}/assignees | `{"userId":"..."}` |
 
 ### Subtasks (Checklist)
 
-| งาน | Method | Endpoint | Body ตัวอย่าง |
-|-----|--------|----------|---------------|
-| ดู subtasks | GET | /api/v1/cards/{id}/subtasks | - |
-| เพิ่ม subtask | POST | /api/v1/cards/{id}/subtasks | `{"title":"..."}` |
-| อัพเดท subtask | PATCH | /api/v1/cards/{id}/subtasks/{sid} | `{"title":"...","isCompleted":true}` |
-| ลบ subtask | DELETE | /api/v1/cards/{id}/subtasks/{sid} | - |
+| งาน | Method | Path | Body ตัวอย่าง |
+|-----|--------|------|---------------|
+| ดู subtasks | GET | /cards/{cardId}/subtasks | - |
+| เพิ่ม subtask | POST | /cards/{cardId}/subtasks | `{"title":"..."}` |
+| แก้ไข subtask | PATCH | /cards/{cardId}/subtasks/{sid} | `{"isCompleted":true}` |
+| ลบ subtask | DELETE | /cards/{cardId}/subtasks/{sid} | - |
 
-**Header ทุก request:** `x-api-key: kbn_your_key` หรือ `Authorization: Bearer <API_KEY>`
+### Comments
+
+| งาน | Method | Path | Body ตัวอย่าง |
+|-----|--------|------|---------------|
+| ดู comments | GET | /cards/{cardId}/comments | - |
+| เพิ่ม comment | POST | /cards/{cardId}/comments | `{"content":"..."}` |
+
+> **หมายเหตุ:** Path ทั้งหมดต่อท้าย Webhook URL เช่น `{WEBHOOK_URL}/cards/{cardId}/move`
 
 ---
 
-## 4. ตัวอย่าง Full Prompt สำหรับ OpenClaw
+## Permissions ที่ใช้ได้
+
+| Permission | ใช้ทำอะไร |
+|------------|----------|
+| `canCreateCard` | สร้าง card ใหม่ |
+| `canDeleteCard` | ลบ card |
+| `canMoveCard` | ย้าย card ไป column อื่น (Move / Stage By) |
+| `canDuplicateCard` | Duplicate card |
+| `canReferCard` | Refer card ไป board อื่น |
+| `canEditCardTitle` | แก้ไขชื่อ card |
+| `canEditCardDescription` | แก้ไข description |
+| `canEditCardPriority` | แก้ไข priority |
+| `canEditCardDueDate` | แก้ไข due date |
+| `canEditCardLabels` | เพิ่ม/ลบ labels |
+| `canEditCardAssignees` | เพิ่ม/ลบ assignees |
+| `canManageSubtasks` | สร้าง/แก้ไข/ลบ subtasks (checklist) |
+| `canComment` | เพิ่ม comment |
+| `canManageLabels` | จัดการ labels (ระดับ board) |
+| `canUploadAttachment` | Upload attachment |
+| `canAddDependency` | เพิ่ม dependency |
+
+---
+
+## ตัวอย่าง Full Prompt สำหรับ OpenClaw
 
 ```
-ฉันมี Kanban Board อยู่ที่ https://kanban.mycompany.com
-API Key คือ: kbn_abc123xyz789
+Webhook URL: https://kanban.mycompany.com/api/v1/openclaw/clxyz123?key=oc_ABCDabcd1234567890...
 
-ให้คุณเป็น Agent ที่ช่วยจัดการ Kanban ผ่าน API
-- Base URL: https://kanban.mycompany.com/api/v1
-- ทุก request ต้องส่ง Header: x-api-key: kbn_abc123xyz789
+คุณเป็น Agent จัดการ Kanban Column นี้
+- เรียก GET {URL} เพื่อดู cards ทั้งหมด + board info + permissions
+- ไม่ต้องส่ง Header ใดๆ — key อยู่ใน URL แล้ว
 
-เมื่อฉันบอกให้ "สร้าง card แก้ bug login พร้อม checklist" คุณจะ:
-1. เรียก GET /boards เพื่อหา column "To Do" และ labels
-2. เรียก GET /users เพื่อหา userId (ถ้าต้อง assign)
-3. เรียก POST /cards สร้าง card พร้อม title, columnId, priority, subtasks
-4. รายงานผลกลับ
+เมื่อฉันบอก "สร้าง card ..." → POST {URL}/cards
+เมื่อฉันบอก "ย้าย card X ไป Done" → เรียก GET เพื่อหา column "Done" แล้ว POST .../cards/{id}/move
+เมื่อฉันบอก "เช็ค subtask เสร็จ" → GET .../cards/{id}/subtasks → PATCH .../subtasks/{sid}
+เมื่อฉันบอก "duplicate card" → POST .../cards/{id}/duplicate
 
-เมื่อฉันบอกให้ "ย้าย card X ไป Done" คุณจะ:
-1. เรียก GET /boards เพื่อหา column "Done"
-2. เรียก POST /cards/{id}/move พร้อม columnId
-3. รายงานผลกลับ
-
-เมื่อฉันบอกให้ "เช็ค subtask เสร็จ" คุณจะ:
-1. เรียก GET /cards/{id}/subtasks เพื่อหา subtaskId
-2. เรียก PATCH /cards/{id}/subtasks/{subtaskId} พร้อม {"isCompleted": true}
-3. รายงานผลกลับ
-
-ทำเช่นนี้สำหรับงานอื่นๆ ทั้งหมด ดู API ครบที่ AGENT_API.md
+ทำงานตาม permissions ที่ GET / แสดงมา ถ้าไม่มีสิทธิ์ให้บอกผู้ใช้
 ```
 
 ---
 
-## 5. วิธีตั้งค่าใน OpenClaw
+## หมายเหตุสำคัญ
 
-1. เปิดการตั้งค่า OpenClaw / Custom Instructions
-2. วาง System Prompt จากข้อ 1 (แก้ BASE_URL และ API_KEY ให้ถูกต้อง)
-3. ใส่ไฟล์ AGENT_API.md หรือ openapi.json เป็นเอกสารอ้างอิง (ถ้า OpenClaw รองรับ)
-4. ทดสอบด้วย prompt ง่ายๆ เช่น "เรียก GET /me ให้หน่อย" เพื่อตรวจสอบว่าเชื่อมต่อได้
-
----
-
-## 6. API Scopes ที่ต้องเปิด
-
-ถ้าใช้ Per-User API Key ต้องเปิด scopes ที่ต้องการ
-
-**แบบรวม (เลือกอย่างใดอย่างหนึ่งหรือทั้งคู่):**
-
-| Scope | ใช้ทำอะไร |
-|-------|----------|
-| `boards:read` | ดู boards, columns, labels |
-| `boards:write` | สร้าง + แก้ไข + ลบ boards |
-| `brands:read` | ดู brands |
-| `users:read` | ดู users |
-| `cards:read` | ค้นหา/ดู cards |
-| `cards:write` | สร้าง + แก้ไข + ลบ cards, toggle labels/assignees |
-| `cards:move` | ย้าย cards ระหว่าง columns |
-| `comments:read` | ดู comments |
-| `comments:write` | สร้าง comments (ถ้ามี API แก้/ลบ comment จะรวมด้วย) |
-| `subtasks:read` | ดู subtasks |
-| `subtasks:write` | สร้าง + แก้ไข + ลบ subtasks |
-
-**แบบละเอียด (กำหนดเฉพาะการกระทำ):**
-
-| Scope | ใช้ทำอะไร |
-|-------|----------|
-| `boards:create` | สร้าง board เท่านั้น |
-| `boards:edit` | แก้ไข board เท่านั้น |
-| `boards:delete` | ลบ board เท่านั้น |
-| `cards:create` | สร้าง card เท่านั้น |
-| `cards:edit` | แก้ไข card, toggle labels/assignees |
-| `cards:delete` | ลบ card เท่านั้น |
-| `comments:create` | สร้าง comment เท่านั้น |
-| `comments:edit` | แก้ไข comment (เมื่อมี API) |
-| `comments:delete` | ลบ comment (เมื่อมี API) |
-| `subtasks:create` | สร้าง subtask เท่านั้น |
-| `subtasks:edit` | แก้ไข subtask เท่านั้น |
-| `subtasks:delete` | ลบ subtask เท่านั้น |
-
-ใช้แบบรวม (เช่น `cards:write`) หรือแบบละเอียด (เช่น `cards:create` + `cards:edit`) ก็ได้
-
-> **แนะนำ:** ถ้าต้องการให้ Agent ทำได้ทุกอย่าง ให้เปิดทุก scopes หรือใช้ Legacy Bearer Token (มีทุก scopes อัตโนมัติ)
+- **API นี้แยกจาก API หลัก** (`/api/v1/cards` etc.) — ไม่ต้องใช้ API Key แบบเดิม
+- **Scoped per-column** — Agent จัดการได้เฉพาะ Card ในคอลัมน์ที่ตั้งค่า Webhook ไว้
+- **ย้าย Card** ได้เฉพาะภายใน Board เดียวกัน (ข้าม Board ใช้ Refer)
+- **Automation Status** ต้องเป็น **Run** ถึงจะเรียก API ได้ (ถ้า Pause จะตอบ 403)
+- **Regenerate Webhook URL** จะเปลี่ยน API Key ใหม่ — URL เก่าจะใช้ไม่ได้
