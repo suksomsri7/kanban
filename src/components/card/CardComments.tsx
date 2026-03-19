@@ -97,7 +97,8 @@ export default function CardComments({
   }
 
   function renderContent(content: string) {
-    const parts = content.split(/(@\w+)/g);
+    const normalized = content.replace(/\\n/g, "\n");
+    const parts = normalized.split(/(@\w+)/g);
     return parts.map((part, i) => {
       if (part.startsWith("@")) {
         const username = part.slice(1);

@@ -154,7 +154,7 @@ export default function CardModal({
     if (data) {
       setCard(data);
       setTitle(data.title);
-      setDescription(data.description || "");
+      setDescription((data.description || "").replace(/\\n/g, "\n"));
       setPriority(data.priority);
       setDueDate(data.dueDate ? format(new Date(data.dueDate), "yyyy-MM-dd") : "");
       const lf = data.lockedFields;
@@ -339,7 +339,7 @@ export default function CardModal({
                     />
                   ) : (
                     <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                      {description || "No description"}
+                      {(description || "No description").replace(/\\n/g, "\n")}
                     </p>
                   )}
                 </div>
