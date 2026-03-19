@@ -1,5 +1,6 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
@@ -102,6 +103,7 @@ export async function getColumnSettings(columnId: string) {
       id: true,
       title: true,
       boardId: true,
+      automationType: true,
       aiProvider: true,
       aiModel: true,
       cronEnabled: true,
@@ -111,6 +113,9 @@ export async function getColumnSettings(columnId: string) {
       webhook: true,
       prompt: true,
       automationStatus: true,
+      openclawUrl: true,
+      openclawApiKey: true,
+      openclawPermissions: true,
     },
   });
 }
@@ -118,6 +123,7 @@ export async function getColumnSettings(columnId: string) {
 export async function updateColumnSettings(
   columnId: string,
   data: {
+    automationType?: string;
     aiProvider?: string | null;
     aiModel?: string | null;
     cronEnabled?: boolean;
@@ -127,6 +133,9 @@ export async function updateColumnSettings(
     webhook?: string | null;
     prompt?: string | null;
     automationStatus?: string;
+    openclawUrl?: string | null;
+    openclawApiKey?: string | null;
+    openclawPermissions?: Record<string, boolean> | null;
   }
 ) {
   const session = await requireAuth();
@@ -138,9 +147,17 @@ export async function updateColumnSettings(
   const { allowed, error: permErr } = await requireBoardPermission(col.boardId, user.id, user.role, "canEditColumn");
   if (!allowed) return { error: permErr || "Permission denied" };
 
+  const { openclawPermissions, ...rest } = data;
   await prisma.column.update({
     where: { id: columnId },
-    data,
+    data: {
+      ...rest,
+      openclawPermissions: openclawPermissions === null
+        ? Prisma.JsonNull
+        : openclawPermissions === undefined
+          ? undefined
+          : openclawPermissions,
+    },
   });
 
   revalidatePath(`/board/${col.boardId}`);

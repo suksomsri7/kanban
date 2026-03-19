@@ -171,6 +171,7 @@ model Column {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  automationType String @default("ai_config")
   aiProvider  String?
   aiModel     String?
   cronEnabled Boolean  @default(false)
@@ -180,6 +181,9 @@ model Column {
   webhook     String?
   prompt      String?  @db.Text
   automationStatus String @default("pause")
+  openclawUrl    String?
+  openclawApiKey String?  @db.Text
+  openclawPermissions Json?
 
   board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards Card[]
