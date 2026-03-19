@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap } from "lucide-react";
+import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, RefreshCw } from "lucide-react";
 import { getColumnSettings, updateColumnSettings } from "@/actions/column";
 
 const AI_PROVIDERS = [
@@ -99,6 +99,34 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
   const [openclawUrl, setOpenclawUrl] = useState("");
   const [openclawApiKey, setOpenclawApiKey] = useState("");
   const [openclawPerms, setOpenclawPerms] = useState<Record<string, boolean>>({});
+  const [copied, setCopied] = useState<string | null>(null);
+
+  function generateApiKey() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let key = "oc_";
+    for (let i = 0; i < 32; i++) key += chars.charAt(Math.floor(Math.random() * chars.length));
+    return key;
+  }
+
+  function buildWebhookUrl() {
+    const base = typeof window !== "undefined" ? window.location.origin : "";
+    return `${base}/api/v1/openclaw/${columnId}`;
+  }
+
+  function regenerateWebhook() {
+    setOpenclawUrl(buildWebhookUrl());
+  }
+
+  function regenerateApiKey() {
+    setOpenclawApiKey(generateApiKey());
+  }
+
+  function copyToClipboard(text: string, label: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(label);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  }
 
   useEffect(() => {
     getColumnSettings(columnId).then((data) => {
@@ -118,6 +146,8 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
         if (data.openclawPermissions && typeof data.openclawPermissions === "object") {
           setOpenclawPerms(data.openclawPermissions as Record<string, boolean>);
         }
+        if (!data.openclawUrl) setOpenclawUrl(`${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/openclaw/${columnId}`);
+        if (!data.openclawApiKey) setOpenclawApiKey(generateApiKey());
       }
       setLoading(false);
     });
@@ -347,12 +377,30 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <label className={labelCls}>OpenClaw URL</label>
-                      <input type="url" value={openclawUrl} onChange={(e) => setOpenclawUrl(e.target.value)} placeholder="https://openclaw.example.com" className={inputCls} />
+                      <label className={labelCls}>Webhook URL</label>
+                      <div className="flex gap-1.5">
+                        <input type="text" value={openclawUrl} readOnly className={`${inputCls} bg-gray-50 text-gray-600 text-xs flex-1`} />
+                        <button onClick={() => copyToClipboard(openclawUrl, "url")} title="Copy" className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "url" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
+                          <Copy size={14} />
+                        </button>
+                        <button onClick={regenerateWebhook} title="Regenerate" className="px-2.5 py-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors shrink-0">
+                          <RefreshCw size={14} />
+                        </button>
+                      </div>
+                      {copied === "url" && <span className="text-[10px] text-green-600 mt-0.5">Copied!</span>}
                     </div>
                     <div>
                       <label className={labelCls}>API Key</label>
-                      <input type="password" value={openclawApiKey} onChange={(e) => setOpenclawApiKey(e.target.value)} placeholder="oc-..." className={inputCls} />
+                      <div className="flex gap-1.5">
+                        <input type="text" value={openclawApiKey} readOnly className={`${inputCls} bg-gray-50 text-gray-600 font-mono text-xs flex-1`} />
+                        <button onClick={() => copyToClipboard(openclawApiKey, "key")} title="Copy" className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "key" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
+                          <Copy size={14} />
+                        </button>
+                        <button onClick={regenerateApiKey} title="Regenerate" className="px-2.5 py-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors shrink-0">
+                          <RefreshCw size={14} />
+                        </button>
+                      </div>
+                      {copied === "key" && <span className="text-[10px] text-green-600 mt-0.5">Copied!</span>}
                     </div>
                   </div>
                 </div>
