@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { AGENT_PROMPT_CONTENT } from "@/lib/agent-prompt-content";
 
 export async function GET() {
-  try {
-    const filePath = join(process.cwd(), "AGENT_PROMPT.md");
-    const content = readFileSync(filePath, "utf-8");
-    return new NextResponse(content, {
-      headers: { "Content-Type": "text/markdown; charset=utf-8" },
-    });
-  } catch {
-    return NextResponse.json({ error: "File not found" }, { status: 404 });
-  }
+  return new NextResponse(AGENT_PROMPT_CONTENT, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }

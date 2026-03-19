@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, RefreshCw, ExternalLink } from "lucide-react";
 import { getColumnSettings, updateColumnSettings } from "@/actions/column";
+import { AGENT_PROMPT_CONTENT } from "@/lib/agent-prompt-content";
 
 const AI_PROVIDERS = [
   { value: "", label: "-- Select --" },
@@ -396,12 +397,8 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                           <ExternalLink size={10} className="shrink-0 ml-auto opacity-50" />
                         </div>
                         <button
-                          onClick={async () => {
-                            try {
-                              const res = await fetch(`${window.location.origin}/api/v1/agent/agent-prompt`);
-                              const text = await res.text();
-                              copyToClipboard(text.replace(/\{WEBHOOK_URL\}/g, openclawUrl), "prompt");
-                            } catch { copyToClipboard("", "prompt"); }
+                          onClick={() => {
+                            copyToClipboard(AGENT_PROMPT_CONTENT.replace(/\{WEBHOOK_URL\}/g, openclawUrl), "prompt");
                           }}
                           title="Copy prompt (with Webhook URL filled in)"
                           className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "prompt" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}
