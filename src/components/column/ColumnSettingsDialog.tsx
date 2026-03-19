@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, RefreshCw } from "lucide-react";
+import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, RefreshCw, ExternalLink } from "lucide-react";
 import { getColumnSettings, updateColumnSettings } from "@/actions/column";
 
 const AI_PROVIDERS = [
@@ -386,6 +386,30 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                         </button>
                       </div>
                       {copied === "url" && <span className="text-[10px] text-green-600 mt-0.5">Copied!</span>}
+                    </div>
+                    <div>
+                      <label className={labelCls}>Agent Prompt Guide</label>
+                      <div className="flex gap-1.5">
+                        <div className={`${inputCls} bg-gray-50 text-xs flex-1 flex items-center gap-1.5 text-blue-600 cursor-pointer hover:text-blue-800`} onClick={() => window.open(`${window.location.origin}/api/v1/openclaw/agent-prompt`, "_blank")}>
+                          <FileText size={12} />
+                          <span className="truncate">agent_prompt.md</span>
+                          <ExternalLink size={10} className="shrink-0 ml-auto opacity-50" />
+                        </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`${window.location.origin}/api/v1/openclaw/agent-prompt`);
+                              const text = await res.text();
+                              copyToClipboard(text.replace(/\{WEBHOOK_URL\}/g, openclawUrl), "prompt");
+                            } catch { copyToClipboard("", "prompt"); }
+                          }}
+                          title="Copy prompt (with Webhook URL filled in)"
+                          className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "prompt" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}
+                        >
+                          <Copy size={14} />
+                        </button>
+                      </div>
+                      {copied === "prompt" && <span className="text-[10px] text-green-600 mt-0.5">Copied! (Webhook URL filled in)</span>}
                     </div>
                   </div>
                 </div>
