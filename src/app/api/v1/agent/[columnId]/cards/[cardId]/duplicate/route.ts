@@ -16,14 +16,14 @@ export async function POST(
   if (permErr) return permErr;
 
   const source = await prisma.card.findFirst({
-    where: { id: cardId, columnId, isArchived: false },
+    where: { id: cardId, column: { boardId: ctx.column.boardId }, isArchived: false },
     include: {
       subtasks: { orderBy: { order: "asc" } },
       labels: true,
       assignees: true,
     },
   });
-  if (!source) return ocError("Card not found in this column", 404);
+  if (!source) return ocError("Card not found in this board", 404);
 
   let body: Record<string, unknown> = {};
   try {

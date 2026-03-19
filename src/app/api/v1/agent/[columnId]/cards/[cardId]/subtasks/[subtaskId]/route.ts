@@ -15,10 +15,10 @@ export async function PATCH(
   if (permErr) return permErr;
 
   const card = await prisma.card.findFirst({
-    where: { id: cardId, columnId, isArchived: false },
+    where: { id: cardId, column: { boardId: ctx.column.boardId }, isArchived: false },
     select: { id: true },
   });
-  if (!card) return ocError("Card not found in this column", 404);
+  if (!card) return ocError("Card not found in this board", 404);
 
   const existing = await prisma.subtask.findFirst({
     where: { id: subtaskId, cardId },
@@ -60,10 +60,10 @@ export async function DELETE(
   if (permErr) return permErr;
 
   const card = await prisma.card.findFirst({
-    where: { id: cardId, columnId, isArchived: false },
+    where: { id: cardId, column: { boardId: ctx.column.boardId }, isArchived: false },
     select: { id: true },
   });
-  if (!card) return ocError("Card not found in this column", 404);
+  if (!card) return ocError("Card not found in this board", 404);
 
   const existing = await prisma.subtask.findFirst({
     where: { id: subtaskId, cardId },

@@ -9,9 +9,10 @@ export async function GET(
   const { columnId, cardId } = await params;
   const result = await authenticateOpenClaw(req, columnId);
   if (result.error) return result.error;
+  const { ctx } = result;
 
   const card = await prisma.card.findFirst({
-    where: { id: cardId, columnId, isArchived: false },
+    where: { id: cardId, column: { boardId: ctx.column.boardId }, isArchived: false },
     include: {
       column: { select: { id: true, title: true } },
       assignees: { include: { user: { select: { id: true, displayName: true, username: true, avatar: true } } } },
@@ -30,7 +31,7 @@ export async function GET(
     },
   });
 
-  if (!card) return ocError("Card not found in this column", 404);
+  if (!card) return ocError("Card not found in this board", 404);
 
   return ocOk(card);
 }
@@ -45,10 +46,10 @@ export async function PATCH(
   const { ctx } = result;
 
   const card = await prisma.card.findFirst({
-    where: { id: cardId, columnId, isArchived: false },
+    where: { id: cardId, column: { boardId: ctx.column.boardId }, isArchived: false },
     select: { id: true },
   });
-  if (!card) return ocError("Card not found in this column", 404);
+  if (!card) return ocError("Card not found in this board", 404);
 
   let body: Record<string, unknown>;
   try {
@@ -118,10 +119,10 @@ export async function DELETE(
   if (permErr) return permErr;
 
   const card = await prisma.card.findFirst({
-    where: { id: cardId, columnId, isArchived: false },
+    where: { id: cardId, column: { boardId: ctx.column.boardId }, isArchived: false },
     select: { id: true },
   });
-  if (!card) return ocError("Card not found in this column", 404);
+  if (!card) return ocError("Card not found in this board", 404);
 
   await prisma.card.delete({ where: { id: cardId } });
 
