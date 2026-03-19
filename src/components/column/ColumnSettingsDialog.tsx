@@ -50,7 +50,9 @@ const OPENCLAW_PERMS = [
   { group: "Card", items: [
     { key: "canCreateCard", label: "Create Card" },
     { key: "canDeleteCard", label: "Delete Card" },
-    { key: "canMoveCard", label: "Move Card" },
+    { key: "canMoveCard", label: "Move / Stage By" },
+    { key: "canDuplicateCard", label: "Duplicate Card" },
+    { key: "canReferCard", label: "Refer Card" },
   ]},
   { group: "Card Editing", items: [
     { key: "canEditCardTitle", label: "Edit Title" },
@@ -62,7 +64,7 @@ const OPENCLAW_PERMS = [
   ]},
   { group: "Other", items: [
     { key: "canManageLabels", label: "Manage Labels" },
-    { key: "canManageSubtasks", label: "Manage Subtasks" },
+    { key: "canManageSubtasks", label: "Manage Subtasks / Checklist" },
     { key: "canUploadAttachment", label: "Upload Attachment" },
     { key: "canAddDependency", label: "Add Dependency" },
     { key: "canComment", label: "Comment" },
