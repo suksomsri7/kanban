@@ -50,7 +50,7 @@ interface BoardViewProps {
   permissions?: UserBoardPermissions;
 }
 
-function mergeCardRefs(cols: typeof board.columns) {
+function mergeCardRefs(cols: ColumnData[]): ColumnData[] {
   return cols.map((col) => {
     const refs = (col as any).cardRefs;
     if (!refs || !Array.isArray(refs) || refs.length === 0) return col;
@@ -60,7 +60,7 @@ function mergeCardRefs(cols: typeof board.columns) {
       _refColumnId: col.id,
       _refSourceBoard: r.card.column?.board?.title,
     }));
-    return { ...col, cards: [...col.cards, ...refCards] };
+    return { ...col, cards: [...col.cards, ...refCards] } as ColumnData;
   });
 }
 

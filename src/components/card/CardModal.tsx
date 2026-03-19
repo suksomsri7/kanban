@@ -784,26 +784,27 @@ export default function CardModal({
               </div>
             </div>
 
-            {/* CrossBoard Dialog */}
-            {crossBoardAction && card && (
-              <CrossBoardDialog
-                cardId={cardId}
-                cardTitle={title}
-                currentBoardId={card.column.boardId}
-                action={crossBoardAction}
-                onClose={() => setCrossBoardAction(null)}
-                onDone={() => {
-                  setCrossBoardAction(null);
-                  loadCard();
-                  router.refresh();
-                }}
-              />
-            )}
           ) : (
             <p className="text-center text-gray-400 py-8">Card not found</p>
           )}
         </div>
       </div>
+
+      {/* CrossBoard Dialog */}
+      {crossBoardAction && card && (
+        <CrossBoardDialog
+          cardId={cardId}
+          cardTitle={title}
+          currentBoardId={card.column.boardId}
+          action={crossBoardAction}
+          onClose={() => setCrossBoardAction(null)}
+          onDone={() => {
+            setCrossBoardAction(null);
+            loadCard();
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
