@@ -50,12 +50,26 @@ interface BoardViewProps {
   permissions?: UserBoardPermissions;
 }
 
+function mergeCardRefs(cols: typeof board.columns) {
+  return cols.map((col) => {
+    const refs = (col as any).cardRefs;
+    if (!refs || !Array.isArray(refs) || refs.length === 0) return col;
+    const refCards = refs.map((r: any) => ({
+      ...r.card,
+      _isRef: true,
+      _refColumnId: col.id,
+      _refSourceBoard: r.card.column?.board?.title,
+    }));
+    return { ...col, cards: [...col.cards, ...refCards] };
+  });
+}
+
 export default function BoardView({ board, currentUser, allUsers, permissions }: BoardViewProps) {
   useBoardRealtime(board.id);
-  const [columns, setColumns] = useState(board.columns);
+  const [columns, setColumns] = useState(mergeCardRefs(board.columns));
 
   useEffect(() => {
-    setColumns(board.columns);
+    setColumns(mergeCardRefs(board.columns));
   }, [board.columns]);
 
   const searchParams = useSearchParams();

@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageSquare, Paperclip, CheckSquare, Calendar, AlertTriangle, Lock } from "lucide-react";
+import { MessageSquare, Paperclip, CheckSquare, Calendar, AlertTriangle, Lock, Link2 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import { format, isPast, isToday } from "date-fns";
 
@@ -16,6 +16,8 @@ interface CardThumbProps {
     labels: { label: { id: string; name: string; color: string } }[];
     lockedFields?: unknown;
     _count: { comments: number; attachments: number; subtasks: number };
+    _isRef?: boolean;
+    _refSourceBoard?: string;
   };
   onCardClick: (cardId: string) => void;
   isDragOverlay?: boolean;
@@ -87,6 +89,16 @@ export default function CardThumb({ card, onCardClick, isDragOverlay, canDrag = 
               {cl.label.name}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Ref badge */}
+      {card._isRef && (
+        <div className="flex items-center gap-1 mb-1.5">
+          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700">
+            <Link2 size={10} />
+            Ref{card._refSourceBoard ? ` · ${card._refSourceBoard}` : ""}
+          </span>
         </div>
       )}
 

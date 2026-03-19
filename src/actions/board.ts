@@ -140,6 +140,23 @@ export async function getBoardById(boardId: string) {
               _count: { select: { comments: true, attachments: true, subtasks: true } },
             },
           },
+          cardRefs: {
+            orderBy: { order: "asc" },
+            include: {
+              card: {
+                include: {
+                  column: { select: { id: true, title: true, board: { select: { id: true, title: true } } } },
+                  assignees: {
+                    include: {
+                      user: { select: { id: true, displayName: true, avatar: true } },
+                    },
+                  },
+                  labels: { include: { label: true } },
+                  _count: { select: { comments: true, attachments: true, subtasks: true } },
+                },
+              },
+            },
+          },
         },
       },
     },

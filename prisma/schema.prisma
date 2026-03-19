@@ -173,6 +173,7 @@ model Column {
 
   board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards Card[]
+  cardRefs CardRef[]
 
   @@index([boardId])
 }
@@ -202,7 +203,22 @@ model Card {
   subtasks     Subtask[]
   dependencies CardDependency[] @relation("DependentCard")
   dependedBy   CardDependency[] @relation("BlockingCard")
+  refs         CardRef[]
 
+  @@index([columnId])
+}
+
+model CardRef {
+  id        String   @id @default(cuid())
+  cardId    String
+  columnId  String
+  order     String
+  createdAt DateTime @default(now())
+
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  column Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@unique([cardId, columnId])
   @@index([columnId])
 }
 

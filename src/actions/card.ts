@@ -413,3 +413,203 @@ export async function updateCardLockedFields(
   revalidatePath(`/board/${boardId}`);
   return { success: true };
 }
+
+export async function getBoardsForPicker() {
+  await requireAuth();
+  return prisma.board.findMany({
+    where: { isArchived: false },
+    select: {
+      id: true,
+      title: true,
+      columns: {
+        orderBy: { order: "asc" },
+        select: { id: true, title: true },
+      },
+    },
+    orderBy: { title: "asc" },
+  });
+}
+
+export async function duplicateCard(
+  cardId: string,
+  targetColumnId: string,
+  targetBoardId: string
+) {
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const source = await prisma.card.findUnique({
+    where: { id: cardId },
+    include: {
+      column: { select: { boardId: true } },
+      subtasks: { orderBy: { order: "asc" } },
+      labels: true,
+      assignees: true,
+    },
+  });
+  if (!source) return { error: "Card not found" };
+
+  const { allowed, error: permErr } = await requireBoardPermission(
+    targetBoardId, user.id, user.role, "canCreateCard"
+  );
+  if (!allowed) return { error: permErr || "Permission denied" };
+
+  const lastCard = await prisma.card.findFirst({
+    where: { columnId: targetColumnId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const newOrder = lastCard ? lastCard.order + "a" : "a0";
+
+  const newCard = await prisma.card.create({
+    data: {
+      title: `${source.title} (copy)`,
+      description: source.description,
+      priority: source.priority,
+      dueDate: source.dueDate,
+      columnId: targetColumnId,
+      order: newOrder,
+      subtasks: source.subtasks.length > 0 ? {
+        create: source.subtasks.map((s) => ({
+          title: s.title,
+          isCompleted: false,
+          order: s.order,
+        })),
+      } : undefined,
+    },
+  });
+
+  await logActivity("CARD_CREATED", targetBoardId, user.id, {
+    title: newCard.title,
+    duplicatedFrom: cardId,
+  }, newCard.id);
+
+  revalidatePath(`/board/${targetBoardId}`);
+  if (source.column.boardId !== targetBoardId) {
+    revalidatePath(`/board/${source.column.boardId}`);
+  }
+  return { success: true, cardId: newCard.id };
+}
+
+export async function crossBoardMoveCard(
+  cardId: string,
+  targetColumnId: string,
+  targetBoardId: string
+) {
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: { title: true, column: { select: { boardId: true } } },
+  });
+  if (!card) return { error: "Card not found" };
+
+  const sourceBoardId = card.column.boardId;
+
+  const { allowed: canMove, error: moveErr } = await requireBoardPermission(
+    sourceBoardId, user.id, user.role, "canMoveCard"
+  );
+  if (!canMove) return { error: moveErr || "Permission denied on source board" };
+
+  const { allowed: canCreate, error: createErr } = await requireBoardPermission(
+    targetBoardId, user.id, user.role, "canCreateCard"
+  );
+  if (!canCreate) return { error: createErr || "Permission denied on target board" };
+
+  const lastCard = await prisma.card.findFirst({
+    where: { columnId: targetColumnId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const newOrder = lastCard ? lastCard.order + "a" : "a0";
+
+  await prisma.$transaction([
+    prisma.card.update({
+      where: { id: cardId },
+      data: { columnId: targetColumnId, order: newOrder },
+    }),
+    prisma.cardRef.deleteMany({ where: { cardId } }),
+  ]);
+
+  await logActivity("CARD_MOVED", targetBoardId, user.id, {
+    title: card.title,
+    from: sourceBoardId,
+    to: targetBoardId,
+  }, cardId);
+
+  revalidatePath(`/board/${sourceBoardId}`);
+  revalidatePath(`/board/${targetBoardId}`);
+  return { success: true };
+}
+
+export async function referCard(
+  cardId: string,
+  targetColumnId: string,
+  targetBoardId: string
+) {
+  const session = await requireAuth();
+
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: { title: true, column: { select: { boardId: true } } },
+  });
+  if (!card) return { error: "Card not found" };
+
+  const targetColumn = await prisma.column.findUnique({
+    where: { id: targetColumnId },
+    select: { boardId: true },
+  });
+  if (!targetColumn || targetColumn.boardId !== targetBoardId) {
+    return { error: "Target column not found in board" };
+  }
+
+  if (card.column.boardId === targetBoardId) {
+    return { error: "Cannot refer card to same board" };
+  }
+
+  const existing = await prisma.cardRef.findUnique({
+    where: { cardId_columnId: { cardId, columnId: targetColumnId } },
+  });
+  if (existing) return { error: "Card already referred to this column" };
+
+  const lastCard = await prisma.card.findFirst({
+    where: { columnId: targetColumnId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const lastRef = await prisma.cardRef.findFirst({
+    where: { columnId: targetColumnId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const maxOrder = [lastCard?.order, lastRef?.order]
+    .filter(Boolean)
+    .sort()
+    .pop();
+  const newOrder = maxOrder ? maxOrder + "a" : "a0";
+
+  await prisma.cardRef.create({
+    data: { cardId, columnId: targetColumnId, order: newOrder },
+  });
+
+  revalidatePath(`/board/${targetBoardId}`);
+  return { success: true };
+}
+
+export async function removeCardRef(cardId: string, columnId: string) {
+  await requireAuth();
+
+  const col = await prisma.column.findUnique({
+    where: { id: columnId },
+    select: { boardId: true },
+  });
+  if (!col) return { error: "Column not found" };
+
+  await prisma.cardRef.delete({
+    where: { cardId_columnId: { cardId, columnId } },
+  }).catch(() => {});
+
+  revalidatePath(`/board/${col.boardId}`);
+  return { success: true };
+}

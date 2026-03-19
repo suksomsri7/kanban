@@ -15,6 +15,9 @@ import {
   ShieldAlert,
   Columns,
   Maximize2,
+  Copy,
+  ArrowRightLeft,
+  Link2,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
@@ -22,6 +25,7 @@ import CardSubtasks from "./CardSubtasks";
 import CardDependencies from "./CardDependencies";
 import CardComments from "./CardComments";
 import CardAttachments from "./CardAttachments";
+import CrossBoardDialog from "./CrossBoardDialog";
 import RichTextEditor, { RichTextReadonly } from "@/components/ui/RichTextEditor";
 import {
   getCardById,
@@ -106,6 +110,7 @@ export default function CardModal({
   const [showLabels, setShowLabels] = useState(false);
   const [showAssignees, setShowAssignees] = useState(false);
   const [showDescModal, setShowDescModal] = useState(false);
+  const [crossBoardAction, setCrossBoardAction] = useState<"duplicate" | "move" | "refer" | null>(null);
 
   const [boardLabels, setBoardLabels] = useState(labels);
 
@@ -737,6 +742,33 @@ export default function CardModal({
                   </div>
                 )}
 
+                {/* Card Actions: Duplicate / Move / Refer */}
+                <div className="pt-4 border-t border-gray-100 space-y-1.5">
+                  <button
+                    onClick={() => setCrossBoardAction("duplicate")}
+                    className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 transition-colors w-full"
+                  >
+                    <Copy size={14} />
+                    Duplicate card
+                  </button>
+                  {pCanMoveCard && (
+                    <button
+                      onClick={() => setCrossBoardAction("move")}
+                      className="flex items-center gap-1.5 text-sm text-orange-600 hover:text-orange-800 transition-colors w-full"
+                    >
+                      <ArrowRightLeft size={14} />
+                      Move to board
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setCrossBoardAction("refer")}
+                    className="flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-800 transition-colors w-full"
+                  >
+                    <Link2 size={14} />
+                    Refer to board
+                  </button>
+                </div>
+
                 {/* Delete */}
                 {pCanDeleteCard && (
                   <div className="pt-4 border-t border-gray-100">
@@ -751,6 +783,22 @@ export default function CardModal({
                 )}
               </div>
             </div>
+
+            {/* CrossBoard Dialog */}
+            {crossBoardAction && card && (
+              <CrossBoardDialog
+                cardId={cardId}
+                cardTitle={title}
+                currentBoardId={card.column.boardId}
+                action={crossBoardAction}
+                onClose={() => setCrossBoardAction(null)}
+                onDone={() => {
+                  setCrossBoardAction(null);
+                  loadCard();
+                  router.refresh();
+                }}
+              />
+            )}
           ) : (
             <p className="text-center text-gray-400 py-8">Card not found</p>
           )}
