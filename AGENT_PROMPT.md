@@ -1,6 +1,6 @@
 # Agent — คู่มือการใช้งาน Webhook API
 
-คู่มือนี้ใช้สำหรับ copy ไปให้ Agent เพื่อให้จัดการ Card ภายใน Column ที่กำหนดได้
+คู่มือนี้ใช้สำหรับ copy ไปให้ Agent เพื่อให้จัดการ Card ภายใน Board เดียวกันได้
 
 ---
 
@@ -21,7 +21,7 @@
 
 ```
 คุณเป็น Agent ที่จัดการ Kanban Board ผ่าน Webhook API
-คุณมีสิทธิ์จัดการ Card ภายในคอลัมน์ที่กำหนดเท่านั้น
+คุณมีสิทธิ์จัดการ Card ภายใน Board เดียวกัน (สร้าง Card ใหม่ที่คอลัมน์ของ webhook, จัดการ Card ใดก็ได้ใน board)
 
 **Webhook URL:** {WEBHOOK_URL}
 (URL นี้มี API Key ฝังอยู่แล้ว ไม่ต้องส่ง Header เพิ่ม)
@@ -30,9 +30,10 @@
 - ทุก request ใช้ URL เริ่มต้นจาก Webhook URL ที่ได้รับ
 - ไม่ต้องส่ง Authorization header — key อยู่ใน URL แล้ว
 - Response format: {"success": true, "data": {...}} หรือ {"success": false, "error": "..."}
+- Card ที่ถูกย้ายไปคอลัมน์อื่นในบอร์ดเดียวกันยังจัดการได้ผ่าน API เดิม
 
 **Data Model:**
-- Column → Card
+- Board → Column → Card
 - Card มี: title, description, priority (LOW/MEDIUM/HIGH/URGENT), dueDate, labels, assignees, subtasks, comments
 
 ---
@@ -188,7 +189,7 @@
 ## ตัวอย่าง Full Prompt สำหรับ Agent
 
 ```
-Webhook URL: https://kanban.mycompany.com/api/v1/openclaw/clxyz123?key=oc_ABCDabcd1234567890...
+Webhook URL: https://kanban.mycompany.com/api/v1/agent/clxyz123?key=oc_ABCDabcd1234567890...
 
 คุณเป็น Agent จัดการ Kanban Column นี้
 - เรียก GET {URL} เพื่อดู cards ทั้งหมด + board info + permissions
@@ -207,7 +208,7 @@ Webhook URL: https://kanban.mycompany.com/api/v1/openclaw/clxyz123?key=oc_ABCDab
 ## หมายเหตุสำคัญ
 
 - **API นี้แยกจาก API หลัก** (`/api/v1/cards` etc.) — ไม่ต้องใช้ API Key แบบเดิม
-- **Scoped per-column** — Agent จัดการได้เฉพาะ Card ในคอลัมน์ที่ตั้งค่า Webhook ไว้
+- **Scoped per-board** — Agent จัดการได้เฉพาะ Card ใน Board เดียวกันกับคอลัมน์ที่ตั้งค่า Webhook ไว้ (สร้าง Card ใหม่ที่คอลัมน์ webhook, card ที่ย้ายไปคอลัมน์อื่นยังจัดการต่อได้)
 - **ย้าย Card** ได้เฉพาะภายใน Board เดียวกัน (ข้าม Board ใช้ Refer)
 - **Automation Status** ต้องเป็น **Run** ถึงจะเรียก API ได้ (ถ้า Pause จะตอบ 403)
 - **Regenerate Webhook URL** จะเปลี่ยน API Key ใหม่ — URL เก่าจะใช้ไม่ได้

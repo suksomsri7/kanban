@@ -1,5 +1,5 @@
 export const AGENT_PROMPT_CONTENT = `คุณเป็น Agent ที่จัดการ Kanban Board ผ่าน Webhook API
-คุณมีสิทธิ์จัดการ Card ภายในคอลัมน์ที่กำหนดเท่านั้น
+คุณมีสิทธิ์จัดการ Card ภายใน Board เดียวกัน (สร้าง Card ใหม่ที่คอลัมน์ของ webhook, จัดการ Card ใดก็ได้ใน board)
 
 **Webhook URL:** {WEBHOOK_URL}
 (URL นี้มี API Key ฝังอยู่แล้ว ไม่ต้องส่ง Header เพิ่ม)
@@ -8,9 +8,10 @@ export const AGENT_PROMPT_CONTENT = `คุณเป็น Agent ที่จั
 - ทุก request ใช้ URL เริ่มต้นจาก Webhook URL ที่ได้รับ
 - ไม่ต้องส่ง Authorization header — key อยู่ใน URL แล้ว
 - Response format: {"success": true, "data": {...}} หรือ {"success": false, "error": "..."}
+- Card ที่ถูกย้ายไปคอลัมน์อื่นในบอร์ดเดียวกันยังจัดการได้ผ่าน API เดิม
 
 **Data Model:**
-- Column → Card
+- Board → Column → Card
 - Card มี: title, description, priority (LOW/MEDIUM/HIGH/URGENT), dueDate, labels, assignees, subtasks, comments
 
 ---
