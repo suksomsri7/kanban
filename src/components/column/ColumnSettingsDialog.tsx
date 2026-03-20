@@ -449,7 +449,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
               </>
             )}
 
-            {/* AI Config only: Webhook, Schedule, Prompt */}
+            {/* AI Config only: Webhook, Schedule */}
             {automationType === "ai_config" && (
               <>
                 <div>
@@ -469,13 +469,14 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                   </div>
                   {cronEnabled && renderCronSchedule()}
                 </div>
-
-                <div>
-                  <div className="flex items-center gap-1.5 mb-2"><FileText size={14} className="text-purple-500" /><span className="text-sm font-semibold text-gray-700">Prompt</span></div>
-                  <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Enter AI prompt for this stage..." rows={5} className={`${inputCls} resize-y`} />
-                </div>
               </>
             )}
+
+            {/* Prompt — shared for both AI Config and Agent */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-2"><FileText size={14} className="text-purple-500" /><span className="text-sm font-semibold text-gray-700">Prompt</span></div>
+              <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={automationType === "openclaw" ? "Enter prompt / instructions for the agent..." : "Enter AI prompt for this stage..."} rows={5} className={`${inputCls} resize-y`} />
+            </div>
           </div>
         )}
 
