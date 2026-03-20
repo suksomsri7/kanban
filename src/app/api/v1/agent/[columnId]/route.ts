@@ -17,6 +17,8 @@ export async function GET(
       id: true,
       title: true,
       boardId: true,
+      prompt: true,
+      automationStatus: true,
       board: {
         select: {
           id: true,
@@ -52,6 +54,8 @@ export async function GET(
     column: {
       id: column.id,
       title: column.title,
+      prompt: column.prompt || "",
+      automationStatus: column.automationStatus,
     },
     board: {
       id: column.board.id,

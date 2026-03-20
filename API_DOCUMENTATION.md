@@ -706,14 +706,65 @@ Body: `{ "content": "..." }`
 
 ---
 
-### Agent Prompt Guide
+### อ่าน Prompt ที่ตั้งไว้
+
+```
+GET {WEBHOOK_URL}/prompt
+```
+**Permission:** ไม่ต้องมี (ใช้ได้แม้ automation status เป็น pause)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "prompt": "ข้อความ prompt ที่ตั้งไว้ใน column settings...",
+    "automationStatus": "run"
+  }
+}
+```
+
+---
+
+### ดู Automation Status
+
+```
+GET {WEBHOOK_URL}/status
+```
+**Permission:** ไม่ต้องมี (ใช้ได้แม้ automation status เป็น pause)
+
+**Response:**
+```json
+{ "success": true, "data": { "automationStatus": "run" } }
+```
+
+---
+
+### เปลี่ยน Automation Status (เปิด/ปิด)
+
+```
+PATCH {WEBHOOK_URL}/status
+Content-Type: application/json
+```
+**Permission:** ไม่ต้องมี (ใช้ได้แม้ automation status เป็น pause)
+
+Body: `{ "automationStatus": "run" }` หรือ `{ "automationStatus": "pause" }`
+
+**Response:**
+```json
+{ "success": true, "data": { "automationStatus": "run" } }
+```
+
+---
+
+### Agent Prompt Guide (Public)
 
 ```
 GET /api/v1/agent/agent-prompt
 ```
 **Auth:** ไม่ต้องมี (public)
 
-ดาวน์โหลดเนื้อหา System Prompt สำหรับ Agent (plain text)
+ดาวน์โหลดเนื้อหา System Prompt template สำหรับ Agent (plain text)
 
 ---
 
@@ -755,6 +806,14 @@ GET /api/v1/agent/agent-prompt
 |--------|--------|------|------------|
 | ดู comments | `GET` | `/cards/{cardId}/comments` | — |
 | เพิ่ม comment | `POST` | `/cards/{cardId}/comments` | `canComment` |
+
+### Prompt & Status
+
+| Action | Method | Path | Permission |
+|--------|--------|------|------------|
+| อ่าน prompt | `GET` | `/prompt` | — (ใช้ได้แม้ pause) |
+| ดู status | `GET` | `/status` | — (ใช้ได้แม้ pause) |
+| เปลี่ยน status | `PATCH` | `/status` | — (ใช้ได้แม้ pause) |
 
 > Path ทั้งหมดต่อท้าย Webhook URL เช่น `{WEBHOOK_URL}/cards/{cardId}/move`
 

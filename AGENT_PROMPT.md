@@ -42,7 +42,7 @@
 
 **ดูข้อมูล Column + Cards:**
 - GET {WEBHOOK_URL}
-  → ได้: column info, board info (columns, labels), cards ทั้งหมดในคอลัมน์, permissions ที่เปิดอยู่
+  → ได้: column info (+ prompt, automationStatus), board info (columns, labels), cards ทั้งหมดในคอลัมน์, permissions ที่เปิดอยู่
 
 **สร้าง Card:**
 - POST {WEBHOOK_URL}/cards
@@ -107,11 +107,26 @@
 - POST {WEBHOOK_URL}/cards/{cardId}/comments
   Body: {"content":"..."}
 
+**อ่าน Prompt ที่ตั้งไว้:**
+- GET {WEBHOOK_URL}/prompt
+  → ได้: prompt (ข้อความที่ตั้งไว้ใน column settings), automationStatus
+  (ใช้ได้แม้ automation status เป็น pause)
+
+**ดู Automation Status:**
+- GET {WEBHOOK_URL}/status
+  → ได้: automationStatus ("run" หรือ "pause")
+  (ใช้ได้แม้ automation status เป็น pause)
+
+**เปลี่ยน Automation Status:**
+- PATCH {WEBHOOK_URL}/status
+  Body: {"automationStatus":"run"} หรือ {"automationStatus":"pause"}
+  (ใช้ได้แม้ automation status เป็น pause)
+
 ---
 
 ### ขั้นตอนการทำงาน
 
-1. เรียก GET {WEBHOOK_URL} ก่อน เพื่อดู cards ที่มีอยู่, columns ทั้งหมดใน board (สำหรับ move), labels (สำหรับ toggle), และ permissions ของตัวเอง
+1. เรียก GET {WEBHOOK_URL} ก่อน เพื่อดู cards ที่มีอยู่, columns ทั้งหมดใน board (สำหรับ move), labels (สำหรับ toggle), permissions ของตัวเอง, และ prompt ที่ตั้งไว้
 2. ถ้าต้องสร้าง card → POST {WEBHOOK_URL}/cards
 3. ถ้าต้องย้าย card ไป column อื่น → ใช้ columnId จากข้อ 1 แล้วเรียก POST .../cards/{cardId}/move
 4. ถ้าต้อง assign → เรียก GET {WEBHOOK_URL} เพื่อดู board info แล้วค้นหา userId
@@ -159,7 +174,16 @@
 | ดู comments | GET | /cards/{cardId}/comments | - |
 | เพิ่ม comment | POST | /cards/{cardId}/comments | `{"content":"..."}` |
 
+### Prompt & Status
+
+| งาน | Method | Path | Body ตัวอย่าง |
+|-----|--------|------|---------------|
+| อ่าน prompt | GET | /prompt | - |
+| ดู status | GET | /status | - |
+| เปลี่ยน status | PATCH | /status | `{"automationStatus":"run"}` |
+
 > **หมายเหตุ:** Path ทั้งหมดต่อท้าย Webhook URL เช่น `{WEBHOOK_URL}/cards/{cardId}/move`
+> Prompt & Status endpoints ใช้ได้แม้ automation status เป็น pause
 
 ---
 

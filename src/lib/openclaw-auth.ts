@@ -16,7 +16,8 @@ type AuthResult =
 
 export async function authenticateOpenClaw(
   req: NextRequest,
-  columnId: string
+  columnId: string,
+  options?: { allowPaused?: boolean }
 ): Promise<AuthResult> {
   const { searchParams } = new URL(req.url);
   const key = searchParams.get("key");
@@ -61,7 +62,7 @@ export async function authenticateOpenClaw(
     };
   }
 
-  if (column.automationStatus === "pause") {
+  if (column.automationStatus === "pause" && !options?.allowPaused) {
     return {
       error: NextResponse.json(
         { success: false, error: "Automation is paused for this column" },
