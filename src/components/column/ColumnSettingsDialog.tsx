@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, ToggleLeft, ToggleRight, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { getColumnSettings, updateColumnSettings } from "@/actions/column";
-import { listAgentKeys, createAgentKey, deleteAgentKey, toggleAgentKey } from "@/actions/agent-key";
+import { listAgentKeys, createAgentKey, deleteAgentKey, toggleAgentKey, regenerateAgentKey } from "@/actions/agent-key";
 
 const AI_PROVIDERS = [
   { value: "", label: "-- Select --" },
@@ -119,6 +119,8 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
 
   const [copied, setCopied] = useState<string | null>(null);
   const [expandedKeyId, setExpandedKeyId] = useState<string | null>(null);
+  const [regeneratedKey, setRegeneratedKey] = useState<{ keyId: string; rawKey: string } | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -209,6 +211,16 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
   async function handleToggleKey(keyId: string, isActive: boolean) {
     const result = await toggleAgentKey(keyId, isActive);
     if (result.error) { setError(result.error); return; }
+    await loadAgentKeys();
+  }
+
+  async function handleRegenerateKey(keyId: string) {
+    if (!confirm("Regenerate this API key? The old key will stop working immediately.")) return;
+    setRegenerating(true);
+    const result = await regenerateAgentKey(keyId);
+    setRegenerating(false);
+    if (result.error) { setError(result.error); return; }
+    setRegeneratedKey({ keyId, rawKey: result.rawKey! });
     await loadAgentKeys();
   }
 
@@ -450,10 +462,34 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                       {copied === `url-${k.id}` && <span className="text-[10px] text-green-600">Copied!</span>}
                     </div>
                     <div>
-                      <label className="text-[10px] text-gray-500 font-medium">API Key (prefix only)</label>
-                      <div className="mt-0.5">
-                        <span className="text-xs font-mono text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-200">{k.keyPrefix}...</span>
-                      </div>
+                      <label className="text-[10px] text-gray-500 font-medium">API Key</label>
+                      {regeneratedKey?.keyId === k.id ? (
+                        <div className="mt-0.5 space-y-1.5">
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2.5">
+                            <p className="text-[10px] text-yellow-800 font-medium mb-1.5">New key generated — copy now, it won't be shown again.</p>
+                            <div className="flex gap-1.5">
+                              <input type="text" value={regeneratedKey.rawKey} readOnly className={`${inputCls} bg-white text-xs flex-1 font-mono`} />
+                              <button onClick={() => copyToClipboard(regeneratedKey.rawKey, `regen-${k.id}`)} className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === `regen-${k.id}` ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100"}`}>
+                                <Copy size={14} />
+                              </button>
+                            </div>
+                            {copied === `regen-${k.id}` && <span className="text-[10px] text-green-600">Copied!</span>}
+                          </div>
+                          <button onClick={() => setRegeneratedKey(null)} className="text-[10px] text-gray-500 hover:text-gray-700 font-medium">Dismiss</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs font-mono text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-200">{k.keyPrefix}...</span>
+                          <button
+                            onClick={() => handleRegenerateKey(k.id)}
+                            disabled={regenerating}
+                            title="Regenerate key"
+                            className="flex items-center gap-1 text-[10px] text-orange-600 hover:text-orange-800 font-medium px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-40"
+                          >
+                            <RefreshCw size={11} className={regenerating ? "animate-spin" : ""} /> Regenerate
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="text-[10px] text-gray-500 font-medium">Permissions</label>
