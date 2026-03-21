@@ -88,6 +88,11 @@ export async function authenticateOpenClaw(
     },
   });
 
+  // #region agent log
+  console.log('[DEBUG-3e7644] Agent API auth lookup',JSON.stringify({keyPrefix:key.slice(0,12),agentKeyFound:!!agentKey,agentKeyColumnId:agentKey?.columnId||null,requestedColumnId:columnId,columnMatch:agentKey?agentKey.columnId===columnId:false,isActive:agentKey?.isActive??null,expiresAt:agentKey?.expiresAt?.toISOString()??null,automationType:column.automationType}));
+  fetch('http://127.0.0.1:7492/ingest/8743131b-3026-4056-b195-fc1daa1be99f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3e7644'},body:JSON.stringify({sessionId:'3e7644',location:'openclaw-auth.ts:authenticateOpenClaw',message:'Agent API auth lookup',data:{keyPrefix:key.slice(0,12),keyHashPrefix:keyHash.slice(0,12),agentKeyFound:!!agentKey,agentKeyColumnId:agentKey?.columnId||null,requestedColumnId:columnId,columnMatch:agentKey?agentKey.columnId===columnId:false,isActive:agentKey?.isActive??null,expiresAt:agentKey?.expiresAt?.toISOString()??null,columnAutomationType:column.automationType,columnAutomationStatus:column.automationStatus},timestamp:Date.now(),hypothesisId:'H2,H3,H4,H5'})}).catch(()=>{});
+  // #endregion
+
   if (agentKey && agentKey.columnId === columnId) {
     if (!agentKey.isActive) {
       return {
