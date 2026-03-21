@@ -188,6 +188,7 @@ model Column {
   board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards Card[]
   cardRefs CardRef[]
+  agentApiKeys AgentApiKey[]
 
   @@index([boardId])
 }
@@ -421,6 +422,26 @@ model CustomRoleBoardAccess {
   board      Board      @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   @@unique([customRoleId, boardId])
+}
+
+// ==================== AGENT API KEY ====================
+
+model AgentApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  keyHash     String    @unique
+  keyPrefix   String
+  columnId    String
+  permissions Json      @default("{}")
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  column Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@index([columnId])
+  @@index([keyHash])
 }
 
 // ==================== API KEY ====================

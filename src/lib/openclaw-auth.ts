@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 export interface OpenClawContext {
@@ -8,6 +9,8 @@ export interface OpenClawContext {
     boardId: string;
   };
   permissions: Record<string, boolean>;
+  agentKeyName: string | null;
+  agentKeyId: string | null;
 }
 
 type AuthResult =
@@ -71,27 +74,83 @@ export async function authenticateOpenClaw(
     };
   }
 
-  if (!column.openclawApiKey || column.openclawApiKey !== key) {
+  const keyHash = createHash("sha256").update(key).digest("hex");
+  const agentKey = await prisma.agentApiKey.findUnique({
+    where: { keyHash },
+    select: {
+      id: true,
+      name: true,
+      columnId: true,
+      permissions: true,
+      isActive: true,
+      expiresAt: true,
+    },
+  });
+
+  if (agentKey && agentKey.columnId === columnId) {
+    if (!agentKey.isActive) {
+      return {
+        error: NextResponse.json(
+          { success: false, error: "API key is disabled" },
+          { status: 401 }
+        ),
+      };
+    }
+    if (agentKey.expiresAt && agentKey.expiresAt < new Date()) {
+      return {
+        error: NextResponse.json(
+          { success: false, error: "API key has expired" },
+          { status: 401 }
+        ),
+      };
+    }
+
+    prisma.agentApiKey.update({
+      where: { id: agentKey.id },
+      data: { lastUsedAt: new Date() },
+    }).catch(() => {});
+
+    const permissions =
+      agentKey.permissions &&
+      typeof agentKey.permissions === "object" &&
+      !Array.isArray(agentKey.permissions)
+        ? (agentKey.permissions as Record<string, boolean>)
+        : {};
+
     return {
-      error: NextResponse.json(
-        { success: false, error: "Invalid API key" },
-        { status: 401 }
-      ),
+      ctx: {
+        column: { id: column.id, title: column.title, boardId: column.boardId },
+        permissions,
+        agentKeyName: agentKey.name,
+        agentKeyId: agentKey.id,
+      },
     };
   }
 
-  const permissions =
-    column.openclawPermissions &&
-    typeof column.openclawPermissions === "object" &&
-    !Array.isArray(column.openclawPermissions)
-      ? (column.openclawPermissions as Record<string, boolean>)
-      : {};
+  // Fallback: legacy single key on column (backward compat)
+  if (column.openclawApiKey && column.openclawApiKey === key) {
+    const permissions =
+      column.openclawPermissions &&
+      typeof column.openclawPermissions === "object" &&
+      !Array.isArray(column.openclawPermissions)
+        ? (column.openclawPermissions as Record<string, boolean>)
+        : {};
+
+    return {
+      ctx: {
+        column: { id: column.id, title: column.title, boardId: column.boardId },
+        permissions,
+        agentKeyName: null,
+        agentKeyId: null,
+      },
+    };
+  }
 
   return {
-    ctx: {
-      column: { id: column.id, title: column.title, boardId: column.boardId },
-      permissions,
-    },
+    error: NextResponse.json(
+      { success: false, error: "Invalid API key" },
+      { status: 401 }
+    ),
   };
 }
 

@@ -61,9 +61,14 @@ export async function POST(
     select: { ownerId: true },
   });
 
+  let finalContent = content.trim();
+  if (ctx.agentKeyName) {
+    finalContent = `**[Agent: ${ctx.agentKeyName}]**\n${finalContent}`;
+  }
+
   const comment = await prisma.comment.create({
     data: {
-      content: content.trim(),
+      content: finalContent,
       cardId,
       authorId: authorId || board?.ownerId || "",
     },

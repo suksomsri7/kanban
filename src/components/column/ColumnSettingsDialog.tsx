@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, RefreshCw, ExternalLink } from "lucide-react";
+import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, RefreshCw, ExternalLink, ToggleLeft, ToggleRight, Eye, EyeOff } from "lucide-react";
 import { getColumnSettings, updateColumnSettings } from "@/actions/column";
+import { listAgentKeys, createAgentKey, deleteAgentKey, toggleAgentKey } from "@/actions/agent-key";
 import { AGENT_PROMPT_CONTENT } from "@/lib/agent-prompt-content";
 
 const AI_PROVIDERS = [
@@ -74,6 +75,17 @@ const OPENCLAW_PERMS = [
 
 const ALL_PERM_KEYS = OPENCLAW_PERMS.flatMap((g) => g.items.map((i) => i.key));
 
+interface AgentKeyItem {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  permissions: unknown;
+  isActive: boolean;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
 interface Props {
   columnId: string;
   columnTitle: string;
@@ -97,28 +109,17 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
   const [prompt, setPrompt] = useState("");
   const [automationStatus, setAutomationStatus] = useState("pause");
 
-  const [openclawUrl, setOpenclawUrl] = useState("");
-  const [openclawApiKey, setOpenclawApiKey] = useState("");
-  const [openclawPerms, setOpenclawPerms] = useState<Record<string, boolean>>({});
+  // Agent keys
+  const [agentKeys, setAgentKeys] = useState<AgentKeyItem[]>([]);
+  const [showCreateKey, setShowCreateKey] = useState(false);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyExpiry, setNewKeyExpiry] = useState("");
+  const [newKeyPerms, setNewKeyPerms] = useState<Record<string, boolean>>({});
+  const [createdKeyUrl, setCreatedKeyUrl] = useState<string | null>(null);
+  const [createdKeyRaw, setCreatedKeyRaw] = useState<string | null>(null);
+  const [keyCreating, setKeyCreating] = useState(false);
+
   const [copied, setCopied] = useState<string | null>(null);
-
-  function generateApiKey() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let key = "oc_";
-    for (let i = 0; i < 32; i++) key += chars.charAt(Math.floor(Math.random() * chars.length));
-    return key;
-  }
-
-  function buildWebhookUrl(key: string) {
-    const base = typeof window !== "undefined" ? window.location.origin : "";
-    return `${base}/api/v1/agent/${columnId}?key=${key}`;
-  }
-
-  function regenerateWebhook() {
-    const newKey = generateApiKey();
-    setOpenclawApiKey(newKey);
-    setOpenclawUrl(buildWebhookUrl(newKey));
-  }
 
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -127,8 +128,21 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
     });
   }
 
+  async function loadAgentKeys() {
+    const keys = await listAgentKeys(columnId);
+    setAgentKeys(keys.map((k) => ({
+      ...k,
+      expiresAt: k.expiresAt ? k.expiresAt.toISOString() : null,
+      lastUsedAt: k.lastUsedAt ? k.lastUsedAt.toISOString() : null,
+      createdAt: k.createdAt.toISOString(),
+    })));
+  }
+
   useEffect(() => {
-    getColumnSettings(columnId).then((data) => {
+    Promise.all([
+      getColumnSettings(columnId),
+      listAgentKeys(columnId),
+    ]).then(([data, keys]) => {
       if (data) {
         setAutomationType((data.automationType as "ai_config" | "openclaw") || "ai_config");
         setAiProvider(data.aiProvider || "");
@@ -140,25 +154,67 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
         setWebhook(data.webhook || "");
         setPrompt(data.prompt || "");
         setAutomationStatus(data.automationStatus || "pause");
-        if (data.openclawPermissions && typeof data.openclawPermissions === "object") {
-          setOpenclawPerms(data.openclawPermissions as Record<string, boolean>);
-        }
-        const key = data.openclawApiKey || generateApiKey();
-        setOpenclawApiKey(key);
-        const base = typeof window !== "undefined" ? window.location.origin : "";
-        setOpenclawUrl(data.openclawUrl || `${base}/api/v1/agent/${columnId}?key=${key}`);
       }
+      setAgentKeys(keys.map((k) => ({
+        ...k,
+        expiresAt: k.expiresAt ? k.expiresAt.toISOString() : null,
+        lastUsedAt: k.lastUsedAt ? k.lastUsedAt.toISOString() : null,
+        createdAt: k.createdAt.toISOString(),
+      })));
       setLoading(false);
     });
   }, [columnId]);
 
-  function togglePerm(key: string) {
-    setOpenclawPerms((prev) => ({ ...prev, [key]: !prev[key] }));
+  function toggleNewPerm(key: string) {
+    setNewKeyPerms((prev) => ({ ...prev, [key]: !prev[key] }));
   }
-  function setAllPerms(val: boolean) {
+  function setAllNewPerms(val: boolean) {
     const perms: Record<string, boolean> = {};
     ALL_PERM_KEYS.forEach((k) => { perms[k] = val; });
-    setOpenclawPerms(perms);
+    setNewKeyPerms(perms);
+  }
+
+  async function handleCreateKey() {
+    if (!newKeyName.trim()) { setError("Key name is required"); return; }
+    setKeyCreating(true);
+    setError("");
+    const result = await createAgentKey(columnId, {
+      name: newKeyName.trim(),
+      permissions: newKeyPerms,
+      expiresAt: newKeyExpiry || null,
+    });
+    setKeyCreating(false);
+    if (result.error) { setError(result.error); return; }
+    if (result.key) {
+      const base = typeof window !== "undefined" ? window.location.origin : "";
+      const url = `${base}/api/v1/agent/${columnId}?key=${result.key.rawKey}`;
+      setCreatedKeyUrl(url);
+      setCreatedKeyRaw(result.key.rawKey);
+      await loadAgentKeys();
+    }
+  }
+
+  function resetCreateForm() {
+    setShowCreateKey(false);
+    setNewKeyName("");
+    setNewKeyExpiry("");
+    setNewKeyPerms({});
+    setCreatedKeyUrl(null);
+    setCreatedKeyRaw(null);
+    setError("");
+  }
+
+  async function handleDeleteKey(keyId: string) {
+    if (!confirm("Delete this API key? This cannot be undone.")) return;
+    const result = await deleteAgentKey(keyId);
+    if (result.error) { setError(result.error); return; }
+    await loadAgentKeys();
+  }
+
+  async function handleToggleKey(keyId: string, isActive: boolean) {
+    const result = await toggleAgentKey(keyId, isActive);
+    if (result.error) { setError(result.error); return; }
+    await loadAgentKeys();
   }
 
   // --- Daily helpers ---
@@ -187,9 +243,9 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
         webhook: webhook || null,
         prompt: prompt || null,
         automationStatus,
-        openclawUrl: openclawUrl || null,
-        openclawApiKey: openclawApiKey || null,
-        openclawPermissions: automationType === "openclaw" ? openclawPerms : null,
+        openclawUrl: null,
+        openclawApiKey: null,
+        openclawPermissions: null,
       });
       if (result.error) { setError(result.error); } else { setSuccess(true); setTimeout(() => setSuccess(false), 2000); }
     });
@@ -281,7 +337,220 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
     );
   }
 
-  const activePermsCount = ALL_PERM_KEYS.filter((k) => openclawPerms[k]).length;
+  const activeNewPermsCount = ALL_PERM_KEYS.filter((k) => newKeyPerms[k]).length;
+
+  function renderPermissionsCheckboxes(perms: Record<string, boolean>, toggle: (key: string) => void) {
+    return (
+      <div className="space-y-3">
+        {OPENCLAW_PERMS.map((group) => (
+          <div key={group.group} className="bg-gray-50 rounded-lg p-2.5">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{group.group}</p>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+              {group.items.map((item) => (
+                <label key={item.key} className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={!!perms[item.key]}
+                    onChange={() => toggle(item.key)}
+                    className="w-3.5 h-3.5 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                  />
+                  <span className="text-xs text-gray-600 group-hover:text-gray-800">{item.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function renderAgentKeysList() {
+    return (
+      <div className="space-y-4">
+        {/* Agent Prompt Guide */}
+        <div>
+          <label className={labelCls}>Agent Prompt Guide</label>
+          <div className="flex gap-1.5">
+            <div className={`${inputCls} bg-gray-50 text-xs flex-1 flex items-center gap-1.5 text-blue-600 cursor-pointer hover:text-blue-800`} onClick={() => window.open(`${window.location.origin}/api/v1/agent/agent-prompt`, "_blank")}>
+              <FileText size={12} />
+              <span className="truncate">agent_prompt.md</span>
+              <ExternalLink size={10} className="shrink-0 ml-auto opacity-50" />
+            </div>
+            <button
+              onClick={() => {
+                const sampleUrl = agentKeys.length > 0
+                  ? `${window.location.origin}/api/v1/agent/${columnId}?key=${agentKeys[0].keyPrefix}...`
+                  : `${window.location.origin}/api/v1/agent/${columnId}?key=YOUR_KEY`;
+                copyToClipboard(AGENT_PROMPT_CONTENT.replace(/\{WEBHOOK_URL\}/g, sampleUrl), "prompt");
+              }}
+              title="Copy prompt (with sample URL filled in)"
+              className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "prompt" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}
+            >
+              <Copy size={14} />
+            </button>
+          </div>
+          {copied === "prompt" && <span className="text-[10px] text-green-600 mt-0.5">Copied!</span>}
+        </div>
+
+        {/* Key list */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1.5">
+              <Key size={14} className="text-amber-500" />
+              <span className="text-sm font-semibold text-gray-700">API Keys</span>
+              <span className="text-[10px] text-gray-400 ml-1">{agentKeys.length} key{agentKeys.length !== 1 ? "s" : ""}</span>
+            </div>
+            {!showCreateKey && (
+              <button
+                onClick={() => { resetCreateForm(); setShowCreateKey(true); }}
+                className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 font-medium px-2 py-1 rounded-lg hover:bg-teal-50 transition-colors"
+              >
+                <Plus size={12} /> Create Key
+              </button>
+            )}
+          </div>
+
+          {agentKeys.length === 0 && !showCreateKey && (
+            <div className="text-center py-6 bg-gray-50 rounded-lg">
+              <Key size={20} className="mx-auto text-gray-300 mb-2" />
+              <p className="text-xs text-gray-400">No API keys yet</p>
+              <button
+                onClick={() => { resetCreateForm(); setShowCreateKey(true); }}
+                className="mt-2 text-xs text-teal-600 hover:text-teal-800 font-medium"
+              >
+                Create your first key
+              </button>
+            </div>
+          )}
+
+          {agentKeys.map((k) => {
+            const perms = (k.permissions && typeof k.permissions === "object" && !Array.isArray(k.permissions)) ? k.permissions as Record<string, boolean> : {};
+            const permCount = ALL_PERM_KEYS.filter((p) => perms[p]).length;
+            const isExpired = k.expiresAt && new Date(k.expiresAt) < new Date();
+            return (
+              <div key={k.id} className={`mb-2 rounded-lg border p-3 ${!k.isActive || isExpired ? "bg-gray-50 border-gray-200 opacity-70" : "bg-white border-gray-200"}`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`text-sm font-medium truncate ${!k.isActive ? "text-gray-400 line-through" : "text-gray-800"}`}>{k.name}</span>
+                    {isExpired && <span className="text-[9px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full font-medium shrink-0">Expired</span>}
+                    {!k.isActive && !isExpired && <span className="text-[9px] px-1.5 py-0.5 bg-gray-200 text-gray-500 rounded-full font-medium shrink-0">Disabled</span>}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleToggleKey(k.id, !k.isActive)}
+                      title={k.isActive ? "Disable key" : "Enable key"}
+                      className="p-1 rounded hover:bg-gray-100 transition-colors"
+                    >
+                      {k.isActive ? <ToggleRight size={16} className="text-green-600" /> : <ToggleLeft size={16} className="text-gray-400" />}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteKey(k.id)}
+                      title="Delete key"
+                      className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                  <span className="font-mono">{k.keyPrefix}...</span>
+                  <span>{permCount}/{ALL_PERM_KEYS.length} permissions</span>
+                  {k.expiresAt && <span>Expires: {new Date(k.expiresAt).toLocaleDateString()}</span>}
+                  {k.lastUsedAt && <span>Last used: {new Date(k.lastUsedAt).toLocaleDateString()}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Create key form */}
+        {showCreateKey && (
+          <div className="rounded-lg border-2 border-teal-200 bg-teal-50/30 p-4 space-y-4">
+            {createdKeyUrl ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-green-700">
+                  <Key size={16} />
+                  <span className="text-sm font-semibold">Key Created Successfully</span>
+                </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-xs text-yellow-800 font-medium mb-2">Copy the Webhook URL now — the full key will not be shown again.</p>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-[10px] text-gray-500 font-medium">Webhook URL</label>
+                      <div className="flex gap-1.5 mt-0.5">
+                        <input type="text" value={createdKeyUrl} readOnly className={`${inputCls} bg-white text-xs flex-1 font-mono`} />
+                        <button onClick={() => copyToClipboard(createdKeyUrl, "newkey-url")} className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "newkey-url" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100"}`}>
+                          <Copy size={14} />
+                        </button>
+                      </div>
+                      {copied === "newkey-url" && <span className="text-[10px] text-green-600">Copied!</span>}
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500 font-medium">Raw API Key</label>
+                      <div className="flex gap-1.5 mt-0.5">
+                        <input type="text" value={createdKeyRaw || ""} readOnly className={`${inputCls} bg-white text-xs flex-1 font-mono`} />
+                        <button onClick={() => copyToClipboard(createdKeyRaw || "", "newkey-raw")} className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "newkey-raw" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100"}`}>
+                          <Copy size={14} />
+                        </button>
+                      </div>
+                      {copied === "newkey-raw" && <span className="text-[10px] text-green-600">Copied!</span>}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={resetCreateForm} className="w-full px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                  Done
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Plus size={14} className="text-teal-600" />
+                    <span className="text-sm font-semibold text-gray-700">Create New API Key</span>
+                  </div>
+                  <button onClick={resetCreateForm} className="p-1 text-gray-400 hover:text-gray-600 rounded"><X size={14} /></button>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Name *</label>
+                  <input type="text" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} placeholder="e.g. n8n-workflow, claude-agent" className={inputCls} />
+                  <p className="text-[10px] text-gray-400 mt-1">This name appears on comments created by this key</p>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Expiration (optional)</label>
+                  <input type="date" value={newKeyExpiry} onChange={(e) => setNewKeyExpiry(e.target.value)} className={inputCls} min={new Date().toISOString().split("T")[0]} />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Shield size={14} className="text-violet-500" />
+                      <span className="text-sm font-semibold text-gray-700">Permissions</span>
+                      <span className="text-[10px] text-gray-400 ml-1">{activeNewPermsCount}/{ALL_PERM_KEYS.length}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => setAllNewPerms(true)} className="text-[10px] text-teal-600 hover:text-teal-800 font-medium px-1.5 py-0.5 rounded hover:bg-teal-50">Select all</button>
+                      <button onClick={() => setAllNewPerms(false)} className="text-[10px] text-gray-500 hover:text-gray-700 font-medium px-1.5 py-0.5 rounded hover:bg-gray-100">Clear</button>
+                    </div>
+                  </div>
+                  {renderPermissionsCheckboxes(newKeyPerms, toggleNewPerm)}
+                </div>
+
+                <button
+                  onClick={handleCreateKey}
+                  disabled={keyCreating || !newKeyName.trim()}
+                  className="w-full px-4 py-2.5 text-sm text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors disabled:opacity-40 font-medium"
+                >
+                  {keyCreating ? "Creating..." : "Create API Key"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -368,85 +637,13 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
 
             {/* Agent Mode */}
             {automationType === "openclaw" && (
-              <>
-                <div>
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <Zap size={14} className="text-orange-500" />
-                    <span className="text-sm font-semibold text-gray-700">Agent Connection</span>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <label className={labelCls}>Webhook URL</label>
-                      <div className="flex gap-1.5">
-                        <input type="text" value={openclawUrl} readOnly className={`${inputCls} bg-gray-50 text-gray-600 text-xs flex-1`} />
-                        <button onClick={() => copyToClipboard(openclawUrl, "url")} title="Copy" className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "url" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
-                          <Copy size={14} />
-                        </button>
-                        <button onClick={regenerateWebhook} title="Regenerate" className="px-2.5 py-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors shrink-0">
-                          <RefreshCw size={14} />
-                        </button>
-                      </div>
-                      {copied === "url" && <span className="text-[10px] text-green-600 mt-0.5">Copied!</span>}
-                    </div>
-                    <div>
-                      <label className={labelCls}>Agent Prompt Guide</label>
-                      <div className="flex gap-1.5">
-                        <div className={`${inputCls} bg-gray-50 text-xs flex-1 flex items-center gap-1.5 text-blue-600 cursor-pointer hover:text-blue-800`} onClick={() => window.open(`${window.location.origin}/api/v1/agent/agent-prompt`, "_blank")}>
-                          <FileText size={12} />
-                          <span className="truncate">agent_prompt.md</span>
-                          <ExternalLink size={10} className="shrink-0 ml-auto opacity-50" />
-                        </div>
-                        <button
-                          onClick={() => {
-                            copyToClipboard(AGENT_PROMPT_CONTENT.replace(/\{WEBHOOK_URL\}/g, openclawUrl), "prompt");
-                          }}
-                          title="Copy prompt (with Webhook URL filled in)"
-                          className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "prompt" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}
-                        >
-                          <Copy size={14} />
-                        </button>
-                      </div>
-                      {copied === "prompt" && <span className="text-[10px] text-green-600 mt-0.5">Copied! (Webhook URL filled in)</span>}
-                    </div>
-                  </div>
+              <div>
+                <div className="flex items-center gap-1.5 mb-3">
+                  <Zap size={14} className="text-orange-500" />
+                  <span className="text-sm font-semibold text-gray-700">Agent Connection</span>
                 </div>
-
-                {/* Permissions */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-1.5">
-                      <Shield size={14} className="text-violet-500" />
-                      <span className="text-sm font-semibold text-gray-700">Permissions</span>
-                      <span className="text-[10px] text-gray-400 ml-1">{activePermsCount}/{ALL_PERM_KEYS.length}</span>
-                    </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => setAllPerms(true)} className="text-[10px] text-teal-600 hover:text-teal-800 font-medium px-1.5 py-0.5 rounded hover:bg-teal-50">เลือกทั้งหมด</button>
-                      <button onClick={() => setAllPerms(false)} className="text-[10px] text-gray-500 hover:text-gray-700 font-medium px-1.5 py-0.5 rounded hover:bg-gray-100">ล้าง</button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {OPENCLAW_PERMS.map((group) => (
-                      <div key={group.group} className="bg-gray-50 rounded-lg p-2.5">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{group.group}</p>
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-                          {group.items.map((item) => (
-                            <label key={item.key} className="flex items-center gap-2 cursor-pointer group">
-                              <input
-                                type="checkbox"
-                                checked={!!openclawPerms[item.key]}
-                                onChange={() => togglePerm(item.key)}
-                                className="w-3.5 h-3.5 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                              />
-                              <span className="text-xs text-gray-600 group-hover:text-gray-800">{item.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
+                {renderAgentKeysList()}
+              </div>
             )}
 
             {/* AI Config only: Webhook, Schedule */}
