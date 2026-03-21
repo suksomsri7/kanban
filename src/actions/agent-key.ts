@@ -126,6 +126,28 @@ export async function toggleAgentKey(keyId: string, isActive: boolean) {
   return { success: true };
 }
 
+export async function updateAgentKeyPermissions(keyId: string, permissions: Record<string, boolean>) {
+  const session = await requireAuth();
+  const user = session.user as SessionUser;
+
+  const agentKey = await prisma.agentApiKey.findUnique({
+    where: { id: keyId },
+    select: { columnId: true, column: { select: { boardId: true } } },
+  });
+  if (!agentKey) return { error: "Key not found" };
+
+  const { allowed, error: permErr } = await requireBoardPermission(
+    agentKey.column.boardId, user.id, user.role, "canEditColumn"
+  );
+  if (!allowed) return { error: permErr || "Permission denied" };
+
+  await prisma.agentApiKey.update({
+    where: { id: keyId },
+    data: { permissions },
+  });
+  return { success: true };
+}
+
 export async function regenerateAgentKey(keyId: string) {
   const session = await requireAuth();
   const user = session.user as SessionUser;

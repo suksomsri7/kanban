@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, RefreshCw, Pencil, Check } from "lucide-react";
 import { getColumnSettings, updateColumnSettings } from "@/actions/column";
-import { listAgentKeys, createAgentKey, deleteAgentKey, toggleAgentKey, regenerateAgentKey } from "@/actions/agent-key";
+import { listAgentKeys, createAgentKey, deleteAgentKey, toggleAgentKey, regenerateAgentKey, updateAgentKeyPermissions } from "@/actions/agent-key";
 
 const AI_PROVIDERS = [
   { value: "", label: "-- Select --" },
@@ -121,6 +121,9 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
   const [expandedKeyId, setExpandedKeyId] = useState<string | null>(null);
   const [regeneratedKey, setRegeneratedKey] = useState<{ keyId: string; rawKey: string } | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [editingPermsKeyId, setEditingPermsKeyId] = useState<string | null>(null);
+  const [editPerms, setEditPerms] = useState<Record<string, boolean>>({});
+  const [savingPerms, setSavingPerms] = useState(false);
 
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -221,6 +224,20 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
     setRegenerating(false);
     if (result.error) { setError(result.error); return; }
     setRegeneratedKey({ keyId, rawKey: result.rawKey! });
+    await loadAgentKeys();
+  }
+
+  function startEditPerms(keyId: string, currentPerms: Record<string, boolean>) {
+    setEditingPermsKeyId(keyId);
+    setEditPerms({ ...currentPerms });
+  }
+
+  async function handleSavePerms(keyId: string) {
+    setSavingPerms(true);
+    const result = await updateAgentKeyPermissions(keyId, editPerms);
+    setSavingPerms(false);
+    if (result.error) { setError(result.error); return; }
+    setEditingPermsKeyId(null);
     await loadAgentKeys();
   }
 
@@ -492,14 +509,46 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                       )}
                     </div>
                     <div>
-                      <label className="text-[10px] text-gray-500 font-medium">Permissions</label>
-                      <div className="mt-0.5 flex flex-wrap gap-1">
-                        {ALL_PERM_KEYS.map((p) => (
-                          <span key={p} className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${perms[p] ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
-                            {p.replace(/_/g, " ")}
-                          </span>
-                        ))}
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] text-gray-500 font-medium">Permissions</label>
+                        {editingPermsKeyId === k.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setEditingPermsKeyId(null)}
+                              className="text-[10px] text-gray-400 hover:text-gray-600 font-medium px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => handleSavePerms(k.id)}
+                              disabled={savingPerms}
+                              className="flex items-center gap-0.5 text-[10px] text-green-600 hover:text-green-800 font-medium px-1.5 py-0.5 rounded hover:bg-green-50 transition-colors disabled:opacity-40"
+                            >
+                              <Check size={10} /> {savingPerms ? "Saving..." : "Save"}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startEditPerms(k.id, perms)}
+                            className="flex items-center gap-0.5 text-[10px] text-blue-600 hover:text-blue-800 font-medium px-1.5 py-0.5 rounded hover:bg-blue-50 transition-colors"
+                          >
+                            <Pencil size={10} /> Edit
+                          </button>
+                        )}
                       </div>
+                      {editingPermsKeyId === k.id ? (
+                        <div className="mt-1.5">
+                          {renderPermissionsCheckboxes(editPerms, (key) => setEditPerms((prev) => ({ ...prev, [key]: !prev[key] })))}
+                        </div>
+                      ) : (
+                        <div className="mt-0.5 flex flex-wrap gap-1">
+                          {ALL_PERM_KEYS.map((p) => (
+                            <span key={p} className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${perms[p] ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
+                              {p.replace(/_/g, " ")}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
                       <label className="text-[10px] text-gray-500 font-medium block mb-1">Example curl</label>
