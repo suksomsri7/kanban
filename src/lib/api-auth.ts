@@ -43,11 +43,6 @@ export async function authenticateApi(req: NextRequest): Promise<AuthResult> {
 async function authenticateWithApiKey(rawKey: string): Promise<AuthResult> {
   const keyHash = hashApiKey(rawKey);
 
-  // #region agent log
-  console.log('[DEBUG-3e7644] Main API auth attempt',JSON.stringify({keyPrefix:rawKey.slice(0,12),isAgentKey:rawKey.startsWith('agk_')}));
-  fetch('http://127.0.0.1:7492/ingest/8743131b-3026-4056-b195-fc1daa1be99f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3e7644'},body:JSON.stringify({sessionId:'3e7644',location:'api-auth.ts:authenticateWithApiKey',message:'Main API auth attempt',data:{keyPrefix:rawKey.slice(0,12),keyHashPrefix:keyHash.slice(0,12),isAgentKey:rawKey.startsWith('agk_')},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
-
   const apiKey = await prisma.apiKey.findUnique({
     where: { keyHash },
     include: {
@@ -56,11 +51,6 @@ async function authenticateWithApiKey(rawKey: string): Promise<AuthResult> {
       },
     },
   });
-
-  // #region agent log
-  console.log('[DEBUG-3e7644] Main API key lookup result',JSON.stringify({found:!!apiKey,keyPrefix:rawKey.slice(0,12)}));
-  fetch('http://127.0.0.1:7492/ingest/8743131b-3026-4056-b195-fc1daa1be99f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3e7644'},body:JSON.stringify({sessionId:'3e7644',location:'api-auth.ts:authenticateWithApiKey',message:'Main API key lookup result',data:{found:!!apiKey,keyPrefix:rawKey.slice(0,12)},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
 
   if (!apiKey) {
     return {
