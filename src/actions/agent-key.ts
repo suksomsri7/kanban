@@ -74,9 +74,6 @@ export async function createAgentKey(
     },
   });
 
-  const base = process.env.NEXT_PUBLIC_APP_URL || "";
-  const webhookUrl = `${base}/api/v1/agent/${columnId}?key=${rawKey}`;
-
   return {
     success: true,
     key: {
@@ -84,7 +81,6 @@ export async function createAgentKey(
       name: agentKey.name,
       rawKey,
       keyPrefix,
-      webhookUrl,
     },
   };
 }

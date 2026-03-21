@@ -1,4 +1,4 @@
-# Agent — คู่มือการใช้งาน Webhook API
+# Agent — คู่มือการใช้งาน API
 
 คู่มือนี้ใช้สำหรับ copy ไปให้ Agent เพื่อให้จัดการ Card ภายใน Board เดียวกันได้
 
@@ -8,129 +8,43 @@
 
 1. เปิด Board → คลิก Settings (ไอคอนเฟือง) ที่คอลัมน์ที่ต้องการ
 2. เลือก Automation Type: **Agent**
-3. ระบบจะสร้าง **Webhook URL** ให้อัตโนมัติ (มี API Key ฝังอยู่ใน URL)
-4. เปิด Permissions ที่ต้องการ
-5. กดตั้ง Status เป็น **Run**
-6. กด **Save** แล้ว copy Webhook URL ไปใช้กับ Agent
+3. กด **Create Key** เพื่อสร้าง API Key ใหม่ — กำหนดชื่อ, วันหมดอายุ, และ Permissions
+4. Copy **Base URL** และ **API Key** ไปใช้งาน
+5. ตั้ง Automation Status เป็น **Run**
+6. กด **Save**
+
+---
+
+## Authentication
+
+ส่ง header `x-api-key` ทุก request:
+
+```
+curl -X GET https://your-domain.com/api/v1/agent/{columnId} \
+  -H "x-api-key: agk_your_api_key_here"
+```
 
 ---
 
 ## System Prompt สำหรับ Agent
 
-คัดลอกข้อความด้านล่างไปใส่ใน System Prompt ของ Agent แล้วแทน `{WEBHOOK_URL}` ด้วย Webhook URL จริง:
+คัดลอกข้อความด้านล่างไปใส่ใน System Prompt ของ Agent แล้วแทน `{BASE_URL}` ด้วย Base URL จริง:
 
 ```
-คุณเป็น Agent ที่จัดการ Kanban Board ผ่าน Webhook API
-คุณมีสิทธิ์จัดการ Card ภายใน Board เดียวกัน (สร้าง Card ใหม่ที่คอลัมน์ของ webhook, จัดการ Card ใดก็ได้ใน board)
+คุณเป็น Agent ที่จัดการ Kanban Board ผ่าน API
+คุณมีสิทธิ์จัดการ Card ภายใน Board เดียวกัน (สร้าง Card ใหม่ที่คอลัมน์ของ API, จัดการ Card ใดก็ได้ใน board)
 
-**Webhook URL:** {WEBHOOK_URL}
-(URL นี้มี API Key ฝังอยู่แล้ว ไม่ต้องส่ง Header เพิ่ม)
+**Base URL:** {BASE_URL}
+**Authentication:** ส่ง header `x-api-key: YOUR_API_KEY` ทุก request
 
 **วิธีเรียก API:**
-- ทุก request ใช้ URL เริ่มต้นจาก Webhook URL ที่ได้รับ
-- ไม่ต้องส่ง Authorization header — key อยู่ใน URL แล้ว
-- Response format: {"success": true, "data": {...}} หรือ {"success": false, "error": "..."}
-- Card ที่ถูกย้ายไปคอลัมน์อื่นในบอร์ดเดียวกันยังจัดการได้ผ่าน API เดิม
+curl -X GET {BASE_URL} -H "x-api-key: YOUR_API_KEY"
+curl -X POST {BASE_URL}/cards -H "x-api-key: YOUR_API_KEY" -H "Content-Type: application/json" -d '{"title":"..."}'
 
-**Data Model:**
-- Board → Column → Card
-- Card มี: title, description, priority (LOW/MEDIUM/HIGH/URGENT), dueDate, labels, assignees, subtasks, comments
+Response format: {"success": true, "data": {...}} หรือ {"success": false, "error": "..."}
 
----
-
-### Endpoints ทั้งหมด
-
-**ดูข้อมูล Column + Cards:**
-- GET {WEBHOOK_URL}
-  → ได้: column info (+ prompt, automationStatus), board info (columns, labels), cards ทั้งหมดในคอลัมน์, permissions ที่เปิดอยู่
-
-**สร้าง Card:**
-- POST {WEBHOOK_URL}/cards
-  Body: {"title":"...", "description":"...", "priority":"HIGH", "dueDate":"2026-04-01", "labelIds":["..."], "assigneeIds":["..."], "subtasks":["ขั้นตอน 1","ขั้นตอน 2"]}
-  (ต้องมี title เป็นอย่างน้อย)
-
-**ดู Card รายละเอียด:**
-- GET {WEBHOOK_URL}/cards/{cardId}
-
-**แก้ไข Card:**
-- PATCH {WEBHOOK_URL}/cards/{cardId}
-  Body: {"title":"...", "description":"...", "priority":"URGENT", "dueDate":"2026-04-01"}
-  (ส่งเฉพาะ field ที่ต้องการแก้ — แต่ละ field ตรวจ permission แยก)
-
-**ลบ Card:**
-- DELETE {WEBHOOK_URL}/cards/{cardId}
-
-**ย้าย Card (Move / Stage By):**
-- POST {WEBHOOK_URL}/cards/{cardId}/move
-  Body: {"targetColumnId":"...", "position":"top"}
-  position: "top" | "bottom" | number (ลำดับ 0-based)
-  (ย้ายได้เฉพาะภายใน board เดียวกัน)
-
-**Duplicate Card:**
-- POST {WEBHOOK_URL}/cards/{cardId}/duplicate
-  Body: {"targetColumnId":"..."} (ไม่ส่ง = duplicate ใน column เดิม)
-  (duplicate ได้เฉพาะภายใน board เดียวกัน)
-
-**Refer Card (แสดง Card ที่ Board อื่น):**
-- POST {WEBHOOK_URL}/cards/{cardId}/refer
-  Body: {"targetColumnId":"..."}
-  (ต้องเป็น column ของ board อื่น)
-
-**Toggle Label:**
-- POST {WEBHOOK_URL}/cards/{cardId}/labels
-  Body: {"labelId":"..."}
-  (ถ้ามีอยู่แล้ว = ลบ, ถ้าไม่มี = เพิ่ม)
-
-**Toggle Assignee:**
-- POST {WEBHOOK_URL}/cards/{cardId}/assignees
-  Body: {"userId":"..."}
-  (ถ้ามีอยู่แล้ว = ลบ, ถ้าไม่มี = เพิ่ม)
-
-**ดู Subtasks:**
-- GET {WEBHOOK_URL}/cards/{cardId}/subtasks
-
-**เพิ่ม Subtask:**
-- POST {WEBHOOK_URL}/cards/{cardId}/subtasks
-  Body: {"title":"..."}
-
-**แก้ไข Subtask:**
-- PATCH {WEBHOOK_URL}/cards/{cardId}/subtasks/{subtaskId}
-  Body: {"title":"...", "isCompleted": true}
-
-**ลบ Subtask:**
-- DELETE {WEBHOOK_URL}/cards/{cardId}/subtasks/{subtaskId}
-
-**ดู Comments:**
-- GET {WEBHOOK_URL}/cards/{cardId}/comments
-
-**เพิ่ม Comment:**
-- POST {WEBHOOK_URL}/cards/{cardId}/comments
-  Body: {"content":"..."}
-
-**อ่าน Prompt ที่ตั้งไว้:**
-- GET {WEBHOOK_URL}/prompt
-  → ได้: prompt (ข้อความที่ตั้งไว้ใน column settings), automationStatus
-  (ใช้ได้แม้ automation status เป็น pause)
-
-**ดู Automation Status:**
-- GET {WEBHOOK_URL}/status
-  → ได้: automationStatus ("run" หรือ "pause")
-  (ใช้ได้แม้ automation status เป็น pause)
-
-**เปลี่ยน Automation Status:**
-- PATCH {WEBHOOK_URL}/status
-  Body: {"automationStatus":"run"} หรือ {"automationStatus":"pause"}
-  (ใช้ได้แม้ automation status เป็น pause)
-
----
-
-### ขั้นตอนการทำงาน
-
-1. เรียก GET {WEBHOOK_URL} ก่อน เพื่อดู cards ที่มีอยู่, columns ทั้งหมดใน board (สำหรับ move), labels (สำหรับ toggle), permissions ของตัวเอง, และ prompt ที่ตั้งไว้
-2. ถ้าต้องสร้าง card → POST {WEBHOOK_URL}/cards
-3. ถ้าต้องย้าย card ไป column อื่น → ใช้ columnId จากข้อ 1 แล้วเรียก POST .../cards/{cardId}/move
-4. ถ้าต้อง assign → เรียก GET {WEBHOOK_URL} เพื่อดู board info แล้วค้นหา userId
-5. ทำงานตาม permission ที่มี — ถ้า permission ไม่เปิด API จะตอบ 403
+...
+(ดูรายละเอียด Endpoints ด้านล่าง)
 ```
 
 ---
@@ -182,7 +96,8 @@
 | ดู status | GET | /status | - |
 | เปลี่ยน status | PATCH | /status | `{"automationStatus":"run"}` |
 
-> **หมายเหตุ:** Path ทั้งหมดต่อท้าย Webhook URL เช่น `{WEBHOOK_URL}/cards/{cardId}/move`
+> **หมายเหตุ:** Path ทั้งหมดต่อท้าย Base URL เช่น `{BASE_URL}/cards/{cardId}/move`
+> ทุก request ต้องส่ง header `x-api-key: YOUR_API_KEY`
 > Prompt & Status endpoints ใช้ได้แม้ automation status เป็น pause
 
 ---
@@ -213,13 +128,13 @@
 ## ตัวอย่าง Full Prompt สำหรับ Agent
 
 ```
-Webhook URL: https://kanban.mycompany.com/api/v1/agent/clxyz123?key=oc_ABCDabcd1234567890...
+Base URL: https://kanban.mycompany.com/api/v1/agent/clxyz123
+API Key: agk_ABCDabcd1234567890...
 
 คุณเป็น Agent จัดการ Kanban Column นี้
-- เรียก GET {URL} เพื่อดู cards ทั้งหมด + board info + permissions
-- ไม่ต้องส่ง Header ใดๆ — key อยู่ใน URL แล้ว
+- เรียก GET {BASE_URL} -H "x-api-key: {API_KEY}" เพื่อดู cards ทั้งหมด + board info + permissions
 
-เมื่อฉันบอก "สร้าง card ..." → POST {URL}/cards
+เมื่อฉันบอก "สร้าง card ..." → POST {BASE_URL}/cards
 เมื่อฉันบอก "ย้าย card X ไป Done" → เรียก GET เพื่อหา column "Done" แล้ว POST .../cards/{id}/move
 เมื่อฉันบอก "เช็ค subtask เสร็จ" → GET .../cards/{id}/subtasks → PATCH .../subtasks/{sid}
 เมื่อฉันบอก "duplicate card" → POST .../cards/{id}/duplicate
@@ -231,8 +146,10 @@ Webhook URL: https://kanban.mycompany.com/api/v1/agent/clxyz123?key=oc_ABCDabcd1
 
 ## หมายเหตุสำคัญ
 
-- **API นี้แยกจาก API หลัก** (`/api/v1/cards` etc.) — ไม่ต้องใช้ API Key แบบเดิม
-- **Scoped per-board** — Agent จัดการได้เฉพาะ Card ใน Board เดียวกันกับคอลัมน์ที่ตั้งค่า Webhook ไว้ (สร้าง Card ใหม่ที่คอลัมน์ webhook, card ที่ย้ายไปคอลัมน์อื่นยังจัดการต่อได้)
+- **API นี้แยกจาก API หลัก** (`/api/v1/cards` etc.) — ใช้ API Key ที่สร้างจาก Stage Settings
+- **สร้าง API Key ได้หลายตัว** — แต่ละตัวมีชื่อ, สิทธิ์, วันหมดอายุแยกกัน
+- **ชื่อ Key** จะแสดงใน comment ที่ Agent สร้าง เช่น `[Agent: n8n-workflow]`
+- **Scoped per-board** — Agent จัดการได้เฉพาะ Card ใน Board เดียวกัน
 - **ย้าย Card** ได้เฉพาะภายใน Board เดียวกัน (ข้าม Board ใช้ Refer)
 - **Automation Status** ต้องเป็น **Run** ถึงจะเรียก API ได้ (ถ้า Pause จะตอบ 403)
-- **Regenerate Webhook URL** จะเปลี่ยน API Key ใหม่ — URL เก่าจะใช้ไม่ได้
+- **Key ถูก hash** — ระบบเก็บเฉพาะ hash ของ key, raw key แสดงแค่ตอนสร้างครั้งเดียว

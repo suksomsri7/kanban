@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, RefreshCw, ExternalLink, ToggleLeft, ToggleRight, Eye, EyeOff } from "lucide-react";
+import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, ExternalLink, ToggleLeft, ToggleRight } from "lucide-react";
 import { getColumnSettings, updateColumnSettings } from "@/actions/column";
 import { listAgentKeys, createAgentKey, deleteAgentKey, toggleAgentKey } from "@/actions/agent-key";
 import { AGENT_PROMPT_CONTENT } from "@/lib/agent-prompt-content";
@@ -115,7 +115,6 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyExpiry, setNewKeyExpiry] = useState("");
   const [newKeyPerms, setNewKeyPerms] = useState<Record<string, boolean>>({});
-  const [createdKeyUrl, setCreatedKeyUrl] = useState<string | null>(null);
   const [createdKeyRaw, setCreatedKeyRaw] = useState<string | null>(null);
   const [keyCreating, setKeyCreating] = useState(false);
 
@@ -186,9 +185,6 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
     setKeyCreating(false);
     if (result.error) { setError(result.error); return; }
     if (result.key) {
-      const base = typeof window !== "undefined" ? window.location.origin : "";
-      const url = `${base}/api/v1/agent/${columnId}?key=${result.key.rawKey}`;
-      setCreatedKeyUrl(url);
       setCreatedKeyRaw(result.key.rawKey);
       await loadAgentKeys();
     }
@@ -199,7 +195,6 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
     setNewKeyName("");
     setNewKeyExpiry("");
     setNewKeyPerms({});
-    setCreatedKeyUrl(null);
     setCreatedKeyRaw(null);
     setError("");
   }
@@ -364,9 +359,24 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
     );
   }
 
+  const baseUrl = typeof window !== "undefined" ? `${window.location.origin}/api/v1/agent/${columnId}` : "";
+
   function renderAgentKeysList() {
     return (
       <div className="space-y-4">
+        {/* Base URL */}
+        <div>
+          <label className={labelCls}>Base URL</label>
+          <div className="flex gap-1.5">
+            <input type="text" value={baseUrl} readOnly className={`${inputCls} bg-gray-50 text-xs flex-1 font-mono text-gray-600`} />
+            <button onClick={() => copyToClipboard(baseUrl, "baseurl")} title="Copy" className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "baseurl" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100"}`}>
+              <Copy size={14} />
+            </button>
+          </div>
+          {copied === "baseurl" && <span className="text-[10px] text-green-600 mt-0.5">Copied!</span>}
+          <p className="text-[10px] text-gray-400 mt-1">ส่ง header <code className="bg-gray-100 px-1 rounded">x-api-key</code> ทุก request</p>
+        </div>
+
         {/* Agent Prompt Guide */}
         <div>
           <label className={labelCls}>Agent Prompt Guide</label>
@@ -378,18 +388,22 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
             </div>
             <button
               onClick={() => {
-                const sampleUrl = agentKeys.length > 0
-                  ? `${window.location.origin}/api/v1/agent/${columnId}?key=${agentKeys[0].keyPrefix}...`
-                  : `${window.location.origin}/api/v1/agent/${columnId}?key=YOUR_KEY`;
-                copyToClipboard(AGENT_PROMPT_CONTENT.replace(/\{WEBHOOK_URL\}/g, sampleUrl), "prompt");
+                copyToClipboard(AGENT_PROMPT_CONTENT.replace(/\{BASE_URL\}/g, baseUrl), "prompt");
               }}
-              title="Copy prompt (with sample URL filled in)"
+              title="Copy prompt (with Base URL filled in)"
               className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "prompt" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}
             >
               <Copy size={14} />
             </button>
           </div>
           {copied === "prompt" && <span className="text-[10px] text-green-600 mt-0.5">Copied!</span>}
+        </div>
+
+        {/* Example curl */}
+        <div className="bg-gray-900 text-gray-100 rounded-lg p-3 text-[11px] font-mono leading-relaxed overflow-x-auto">
+          <span className="text-gray-500"># Example</span>{"\n"}
+          <span className="text-green-400">curl</span> -X GET {baseUrl} \{"\n"}
+          {"  "}-H <span className="text-yellow-300">&quot;x-api-key: YOUR_API_KEY&quot;</span>
         </div>
 
         {/* Key list */}
@@ -466,36 +480,29 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
         {/* Create key form */}
         {showCreateKey && (
           <div className="rounded-lg border-2 border-teal-200 bg-teal-50/30 p-4 space-y-4">
-            {createdKeyUrl ? (
+            {createdKeyRaw ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-green-700">
                   <Key size={16} />
                   <span className="text-sm font-semibold">Key Created Successfully</span>
                 </div>
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="text-xs text-yellow-800 font-medium mb-2">Copy the Webhook URL now — the full key will not be shown again.</p>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="text-[10px] text-gray-500 font-medium">Webhook URL</label>
-                      <div className="flex gap-1.5 mt-0.5">
-                        <input type="text" value={createdKeyUrl} readOnly className={`${inputCls} bg-white text-xs flex-1 font-mono`} />
-                        <button onClick={() => copyToClipboard(createdKeyUrl, "newkey-url")} className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "newkey-url" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100"}`}>
-                          <Copy size={14} />
-                        </button>
-                      </div>
-                      {copied === "newkey-url" && <span className="text-[10px] text-green-600">Copied!</span>}
+                  <p className="text-xs text-yellow-800 font-medium mb-2">Copy the API Key now — it will not be shown again.</p>
+                  <div>
+                    <label className="text-[10px] text-gray-500 font-medium">API Key</label>
+                    <div className="flex gap-1.5 mt-0.5">
+                      <input type="text" value={createdKeyRaw} readOnly className={`${inputCls} bg-white text-xs flex-1 font-mono`} />
+                      <button onClick={() => copyToClipboard(createdKeyRaw, "newkey-raw")} className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "newkey-raw" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100"}`}>
+                        <Copy size={14} />
+                      </button>
                     </div>
-                    <div>
-                      <label className="text-[10px] text-gray-500 font-medium">Raw API Key</label>
-                      <div className="flex gap-1.5 mt-0.5">
-                        <input type="text" value={createdKeyRaw || ""} readOnly className={`${inputCls} bg-white text-xs flex-1 font-mono`} />
-                        <button onClick={() => copyToClipboard(createdKeyRaw || "", "newkey-raw")} className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "newkey-raw" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100"}`}>
-                          <Copy size={14} />
-                        </button>
-                      </div>
-                      {copied === "newkey-raw" && <span className="text-[10px] text-green-600">Copied!</span>}
-                    </div>
+                    {copied === "newkey-raw" && <span className="text-[10px] text-green-600">Copied!</span>}
                   </div>
+                </div>
+                <div className="bg-gray-900 text-gray-100 rounded-lg p-3 text-[11px] font-mono leading-relaxed overflow-x-auto">
+                  <span className="text-gray-500"># Usage</span>{"\n"}
+                  <span className="text-green-400">curl</span> -X GET {baseUrl} \{"\n"}
+                  {"  "}-H <span className="text-yellow-300">&quot;x-api-key: {createdKeyRaw}&quot;</span>
                 </div>
                 <button onClick={resetCreateForm} className="w-full px-3 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                   Done

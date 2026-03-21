@@ -22,13 +22,14 @@ export async function authenticateOpenClaw(
   columnId: string,
   options?: { allowPaused?: boolean }
 ): Promise<AuthResult> {
-  const { searchParams } = new URL(req.url);
-  const key = searchParams.get("key");
+  const key =
+    req.headers.get("x-api-key") ||
+    new URL(req.url).searchParams.get("key");
 
   if (!key) {
     return {
       error: NextResponse.json(
-        { success: false, error: "Missing ?key= parameter" },
+        { success: false, error: "Missing x-api-key header" },
         { status: 401 }
       ),
     };
