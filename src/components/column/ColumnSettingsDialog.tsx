@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, ToggleLeft, ToggleRight } from "lucide-react";
+import { X, Bot, Clock, Key, Globe, FileText, Power, Plus, Trash2, Shield, Zap, Copy, ToggleLeft, ToggleRight, ChevronDown, ChevronUp } from "lucide-react";
 import { getColumnSettings, updateColumnSettings } from "@/actions/column";
 import { listAgentKeys, createAgentKey, deleteAgentKey, toggleAgentKey } from "@/actions/agent-key";
 
@@ -118,6 +118,7 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
   const [keyCreating, setKeyCreating] = useState(false);
 
   const [copied, setCopied] = useState<string | null>(null);
+  const [expandedKeyId, setExpandedKeyId] = useState<string | null>(null);
 
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -396,6 +397,8 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
             const perms = (k.permissions && typeof k.permissions === "object" && !Array.isArray(k.permissions)) ? k.permissions as Record<string, boolean> : {};
             const permCount = ALL_PERM_KEYS.filter((p) => perms[p]).length;
             const isExpired = k.expiresAt && new Date(k.expiresAt) < new Date();
+            const isExpanded = expandedKeyId === k.id;
+            const baseUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/agent/${columnId}`;
             return (
               <div key={k.id} className={`mb-2 rounded-lg border p-3 ${!k.isActive || isExpired ? "bg-gray-50 border-gray-200 opacity-70" : "bg-white border-gray-200"}`}>
                 <div className="flex items-center justify-between mb-1.5">
@@ -405,6 +408,13 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                     {!k.isActive && !isExpired && <span className="text-[9px] px-1.5 py-0.5 bg-gray-200 text-gray-500 rounded-full font-medium shrink-0">Disabled</span>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => setExpandedKeyId(isExpanded ? null : k.id)}
+                      title="View connection details"
+                      className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                    >
+                      {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
                     <button
                       onClick={() => handleToggleKey(k.id, !k.isActive)}
                       title={k.isActive ? "Disable key" : "Enable key"}
@@ -427,6 +437,42 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                   {k.expiresAt && <span>Expires: {new Date(k.expiresAt).toLocaleDateString()}</span>}
                   {k.lastUsedAt && <span>Last used: {new Date(k.lastUsedAt).toLocaleDateString()}</span>}
                 </div>
+                {isExpanded && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 space-y-2.5">
+                    <div>
+                      <label className="text-[10px] text-gray-500 font-medium">Base URL</label>
+                      <div className="flex gap-1.5 mt-0.5">
+                        <input type="text" value={baseUrl} readOnly className={`${inputCls} bg-gray-50 text-xs flex-1 font-mono`} />
+                        <button onClick={() => copyToClipboard(baseUrl, `url-${k.id}`)} className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === `url-${k.id}` ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100"}`}>
+                          <Copy size={14} />
+                        </button>
+                      </div>
+                      {copied === `url-${k.id}` && <span className="text-[10px] text-green-600">Copied!</span>}
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500 font-medium">API Key (prefix only)</label>
+                      <div className="mt-0.5">
+                        <span className="text-xs font-mono text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-200">{k.keyPrefix}...</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500 font-medium">Permissions</label>
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {ALL_PERM_KEYS.map((p) => (
+                          <span key={p} className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${perms[p] ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
+                            {p.replace(/_/g, " ")}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
+                      <label className="text-[10px] text-gray-500 font-medium block mb-1">Example curl</label>
+                      <code className="text-[10px] text-gray-600 break-all leading-relaxed">
+                        curl -X GET {baseUrl}/cards -H &quot;x-api-key: {k.keyPrefix}...YOUR_KEY&quot;
+                      </code>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -441,8 +487,18 @@ export default function ColumnSettingsDialog({ columnId, columnTitle, onClose }:
                   <Key size={16} />
                   <span className="text-sm font-semibold">Key Created Successfully</span>
                 </div>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="text-xs text-yellow-800 font-medium mb-2">Copy the API Key now — it will not be shown again.</p>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 space-y-3">
+                  <p className="text-xs text-yellow-800 font-medium">Copy the API Key now — it will not be shown again.</p>
+                  <div>
+                    <label className="text-[10px] text-gray-500 font-medium">Base URL</label>
+                    <div className="flex gap-1.5 mt-0.5">
+                      <input type="text" value={`${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/agent/${columnId}`} readOnly className={`${inputCls} bg-white text-xs flex-1 font-mono`} />
+                      <button onClick={() => copyToClipboard(`${window.location.origin}/api/v1/agent/${columnId}`, "newkey-url")} className={`px-2.5 py-2 rounded-lg border transition-colors shrink-0 ${copied === "newkey-url" ? "bg-green-50 border-green-300 text-green-600" : "border-gray-200 text-gray-500 hover:bg-gray-100"}`}>
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                    {copied === "newkey-url" && <span className="text-[10px] text-green-600">Copied!</span>}
+                  </div>
                   <div>
                     <label className="text-[10px] text-gray-500 font-medium">API Key</label>
                     <div className="flex gap-1.5 mt-0.5">
