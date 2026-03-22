@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth, requireSuperAdmin } from "@/lib/auth-utils";
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
-import { deleteBrandFiles } from "@/lib/storage";
+import { deleteMultipleCardFiles } from "@/lib/storage";
 import type { SessionUser } from "@/types";
 
 const CreateBrandSchema = z.object({
@@ -204,7 +204,7 @@ export async function deleteBrand(brandId: string) {
     const cardIds = boards.flatMap((b) =>
       b.columns.flatMap((c) => c.cards.map((card) => card.id))
     );
-    await deleteBrandFiles(cardIds);
+    await deleteMultipleCardFiles(cardIds);
   } catch (err) {
     console.error("File cleanup error (non-fatal):", err);
   }

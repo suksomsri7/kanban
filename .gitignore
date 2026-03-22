@@ -42,5 +42,8 @@ next-env.d.ts
 
 /src/generated/prisma
 
+# uploads
+/uploads
+
 .vercel
 .env*.local

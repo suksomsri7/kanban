@@ -9,6 +9,7 @@ import { createNotification, notifyUsers } from "@/actions/notification";
 import { logActivity } from "@/actions/activity";
 import { triggerBoardEvent } from "@/lib/pusher-server";
 import { requireBoardPermission } from "@/lib/permissions";
+import { deleteCardFiles } from "@/lib/storage";
 
 const CreateCardSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -235,6 +236,7 @@ export async function deleteCard(cardId: string) {
 
   await logActivity("CARD_DELETED", card.column.boardId, user.id, { title: card.title });
   await prisma.card.delete({ where: { id: cardId } });
+  deleteCardFiles(cardId).catch(() => {});
 
   revalidatePath(`/board/${card.column.boardId}`);
   return { success: true };
