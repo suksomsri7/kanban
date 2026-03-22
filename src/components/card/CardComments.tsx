@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { MessageSquare, Trash2, Send, Paperclip, X, Loader2, FileText, Film, Image as ImageIcon, Download, Bot } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import { addComment, deleteComment } from "@/actions/card";
@@ -26,7 +26,8 @@ interface CardCommentsProps {
   boardId: string;
   isEditor: boolean;
   allUsers: MentionUser[];
-  onRefresh: () => void;
+  onUpdate?: (comments: Comment[]) => void;
+  onRefresh?: () => void;
 }
 
 interface PendingFile {
@@ -71,14 +72,18 @@ function getFileTypeInfo(file: File): { icon: "image" | "video" | "doc"; label: 
 }
 
 export default function CardComments({
-  comments,
+  comments: initialComments,
   cardId,
   boardId,
   isEditor,
   allUsers,
+  onUpdate,
   onRefresh,
 }: CardCommentsProps) {
+  const [comments, setComments] = useState(initialComments);
   const [text, setText] = useState("");
+
+  useEffect(() => { setComments(initialComments); }, [initialComments]);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
   const [cursorPos, setCursorPos] = useState(0);
@@ -187,11 +192,15 @@ export default function CardComments({
       if (!finalContent.trim()) return;
 
       startTransition(async () => {
-        await addComment(cardId, finalContent, boardId);
+        const result = await addComment(cardId, finalContent, boardId);
         setText("");
         pendingFiles.forEach((pf) => { if (pf.preview) URL.revokeObjectURL(pf.preview); });
         setPendingFiles([]);
-        onRefresh();
+        if (result && "comment" in result && result.comment) {
+          const next = [result.comment as Comment, ...comments];
+          setComments(next);
+          if (onUpdate) onUpdate(next);
+        } else if (onRefresh) onRefresh();
       });
     } finally {
       setUploading(false);
@@ -199,9 +208,11 @@ export default function CardComments({
   }
 
   async function handleDelete(commentId: string) {
+    const next = comments.filter((c) => c.id !== commentId);
+    setComments(next);
+    if (onUpdate) onUpdate(next);
     startTransition(async () => {
       await deleteComment(commentId, boardId);
-      onRefresh();
     });
   }
 

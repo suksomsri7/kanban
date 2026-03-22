@@ -25,12 +25,12 @@ export async function createSubtask(cardId: string, title: string, boardId: stri
 
   const order = generateKeyBetween(lastSubtask?.order ?? null, null);
 
-  await prisma.subtask.create({
+  const subtask = await prisma.subtask.create({
     data: { title: title.trim(), cardId, order },
   });
 
   revalidatePath(`/board/${boardId}`);
-  return { success: true };
+  return { success: true, subtask };
 }
 
 export async function toggleSubtask(subtaskId: string, boardId: string) {

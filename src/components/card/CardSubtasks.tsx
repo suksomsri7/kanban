@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Plus, X, CheckSquare, Square, Trash2 } from "lucide-react";
 import { createSubtask, toggleSubtask, deleteSubtask } from "@/actions/subtask";
 
@@ -16,44 +16,62 @@ interface CardSubtasksProps {
   cardId: string;
   boardId: string;
   isEditor: boolean;
-  onRefresh: () => void;
+  onUpdate?: (subtasks: Subtask[]) => void;
+  onRefresh?: () => void;
 }
 
 export default function CardSubtasks({
-  subtasks,
+  subtasks: initialSubtasks,
   cardId,
   boardId,
   isEditor,
+  onUpdate,
   onRefresh,
 }: CardSubtasksProps) {
+  const [items, setItems] = useState(initialSubtasks);
   const [newTitle, setNewTitle] = useState("");
   const [adding, setAdding] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const completed = subtasks.filter((s) => s.isCompleted).length;
-  const total = subtasks.length;
+  useEffect(() => { setItems(initialSubtasks); }, [initialSubtasks]);
+
+  const completed = items.filter((s) => s.isCompleted).length;
+  const total = items.length;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  function notify(next: Subtask[]) {
+    if (onUpdate) onUpdate(next);
+    else if (onRefresh) onRefresh();
+  }
 
   async function handleAdd() {
     if (!newTitle.trim()) return;
     startTransition(async () => {
-      await createSubtask(cardId, newTitle, boardId);
+      const result = await createSubtask(cardId, newTitle, boardId);
       setNewTitle("");
-      onRefresh();
+      if (result && "subtask" in result && result.subtask) {
+        const next = [...items, result.subtask as Subtask];
+        setItems(next);
+        notify(next);
+      }
     });
   }
 
   async function handleToggle(subtaskId: string) {
+    const next = items.map((s) => s.id === subtaskId ? { ...s, isCompleted: !s.isCompleted } : s);
+    setItems(next);
+    notify(next);
     startTransition(async () => {
       await toggleSubtask(subtaskId, boardId);
-      onRefresh();
     });
   }
 
   async function handleDelete(subtaskId: string) {
+    const next = items.filter((s) => s.id !== subtaskId);
+    setItems(next);
+    notify(next);
     startTransition(async () => {
       await deleteSubtask(subtaskId, boardId);
-      onRefresh();
     });
   }
 
@@ -84,7 +102,7 @@ export default function CardSubtasks({
       )}
 
       <div className="space-y-1 mb-2">
-        {subtasks.map((st) => (
+        {items.map((st) => (
           <div key={st.id} className="flex items-center gap-2 group py-0.5">
             {isEditor ? (
               <button

@@ -333,8 +333,11 @@ export async function addComment(cardId: string, content: string, boardId: strin
 
   if (!content.trim()) return { error: "Comment cannot be empty" };
 
-  await prisma.comment.create({
+  const comment = await prisma.comment.create({
     data: { content: content.trim(), cardId, authorId: user.id },
+    include: {
+      author: { select: { id: true, displayName: true, avatar: true } },
+    },
   });
 
   const card = await prisma.card.findUnique({
@@ -380,7 +383,7 @@ export async function addComment(cardId: string, content: string, boardId: strin
   // #endregion
   revalidatePath(`/board/${boardId}`);
   triggerBoardEvent(boardId, "comment-added", { cardId });
-  return { success: true };
+  return { success: true, comment };
 }
 
 export async function deleteComment(commentId: string, boardId: string) {

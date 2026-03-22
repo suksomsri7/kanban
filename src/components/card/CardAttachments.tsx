@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { Paperclip, Upload, Trash2, FileText, Image, Film, File } from "lucide-react";
 import { createAttachmentRecord, deleteAttachment } from "@/actions/attachment";
 import { format } from "date-fns";
@@ -20,7 +20,8 @@ interface CardAttachmentsProps {
   cardId: string;
   boardId: string;
   isEditor: boolean;
-  onRefresh: () => void;
+  onUpdate?: (attachments: Attachment[]) => void;
+  onRefresh?: () => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -37,15 +38,24 @@ function getFileIcon(mimeType: string) {
 }
 
 export default function CardAttachments({
-  attachments,
+  attachments: initialAttachments,
   cardId,
   boardId,
   isEditor,
+  onUpdate,
   onRefresh,
 }: CardAttachmentsProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [items, setItems] = useState(initialAttachments);
   const [uploading, setUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => { setItems(initialAttachments); }, [initialAttachments]);
+
+  function notify(next: Attachment[]) {
+    if (onUpdate) onUpdate(next);
+    else if (onRefresh) onRefresh();
+  }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -66,7 +76,7 @@ export default function CardAttachments({
       if (data.error) {
         alert(data.error);
       } else {
-        await createAttachmentRecord(
+        const result = await createAttachmentRecord(
           cardId,
           data.fileName,
           data.fileUrl,
@@ -74,7 +84,11 @@ export default function CardAttachments({
           data.mimeType,
           boardId
         );
-        onRefresh();
+        if (result && "attachment" in result && result.attachment) {
+          const next = [result.attachment as Attachment, ...items];
+          setItems(next);
+          notify(next);
+        } else if (onRefresh) onRefresh();
       }
     } catch {
       alert("Upload failed");
@@ -86,9 +100,11 @@ export default function CardAttachments({
 
   async function handleDelete(attachmentId: string) {
     if (!confirm("Delete this attachment?")) return;
+    const next = items.filter((a) => a.id !== attachmentId);
+    setItems(next);
+    notify(next);
     startTransition(async () => {
       await deleteAttachment(attachmentId, boardId);
-      onRefresh();
     });
   }
 
@@ -97,7 +113,7 @@ export default function CardAttachments({
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
           <Paperclip size={14} />
-          Attachments ({attachments.length})
+          Attachments ({items.length})
         </h4>
         {isEditor && (
           <button
@@ -119,9 +135,9 @@ export default function CardAttachments({
         accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
       />
 
-      {attachments.length > 0 && (
+      {items.length > 0 && (
         <div className="space-y-2">
-          {attachments.map((att) => (
+          {items.map((att) => (
             <div
               key={att.id}
               className="flex items-center gap-3 p-2 rounded-lg border border-gray-100 hover:border-gray-200 group"

@@ -196,7 +196,6 @@ export default function CardModal({
     formData.set("priority", priority);
     formData.set("dueDate", dueDate || "");
     await updateCard(formData);
-    refreshBoard();
   }
 
   async function handleFieldSave(field: string, value: string) {
@@ -210,30 +209,47 @@ export default function CardModal({
     if (!confirm("Delete this card permanently?")) return;
     await deleteCard(cardId);
     onClose();
-    refreshBoard();
   }
 
   async function handleStageChange(targetColumnId: string) {
     if (!card || targetColumnId === card.columnId) return;
+    const targetCol = columns.find((c) => c.id === targetColumnId);
     startTransition(async () => {
       const order = generateKeyBetween(null, null) + Date.now().toString(36);
       await moveCard(cardId, targetColumnId, order, boardId);
-      await loadCard();
-      refreshBoard();
+      setCard((prev) => prev ? { ...prev, columnId: targetColumnId, column: { ...prev.column, id: targetColumnId, title: targetCol?.title || prev.column.title } } : prev);
     });
   }
 
   async function handleToggleLabel(labelId: string) {
     startTransition(async () => {
       await toggleCardLabel(cardId, labelId, boardId);
-      await loadCard();
+      setCard((prev) => {
+        if (!prev) return prev;
+        const has = prev.labels.some((l) => l.label.id === labelId);
+        if (has) {
+          return { ...prev, labels: prev.labels.filter((l) => l.label.id !== labelId) };
+        }
+        const label = boardLabels.find((l) => l.id === labelId);
+        if (!label) return prev;
+        return { ...prev, labels: [...prev.labels, { label, labelId, cardId }] as typeof prev.labels };
+      });
     });
   }
 
   async function handleToggleAssignee(userId: string) {
     startTransition(async () => {
       await toggleCardAssignee(cardId, userId, boardId);
-      await loadCard();
+      setCard((prev) => {
+        if (!prev) return prev;
+        const has = prev.assignees.some((a) => a.user.id === userId);
+        if (has) {
+          return { ...prev, assignees: prev.assignees.filter((a) => a.user.id !== userId) };
+        }
+        const user = allUsers.find((u) => u.id === userId);
+        if (!user) return prev;
+        return { ...prev, assignees: [...prev.assignees, { user, userId, cardId }] as typeof prev.assignees };
+      });
     });
   }
 
@@ -266,10 +282,12 @@ export default function CardModal({
         setBoardLabels((prev) =>
           prev.map((l) => l.id === editingLabelId ? { ...l, name: labelName.trim(), color: labelColor } : l)
         );
-        await loadCard();
+        setCard((prev) => {
+          if (!prev) return prev;
+          return { ...prev, labels: prev.labels.map((cl) => cl.label.id === editingLabelId ? { ...cl, label: { ...cl.label, name: labelName.trim(), color: labelColor } } : cl) };
+        });
       }
       setLabelMode("list");
-      refreshBoard();
     });
   }
 
@@ -278,8 +296,10 @@ export default function CardModal({
     startTransition(async () => {
       await deleteLabel(labelId, boardId);
       setBoardLabels((prev) => prev.filter((l) => l.id !== labelId));
-      await loadCard();
-      refreshBoard();
+      setCard((prev) => {
+        if (!prev) return prev;
+        return { ...prev, labels: prev.labels.filter((cl) => cl.label.id !== labelId) };
+      });
     });
   }
 
@@ -430,7 +450,7 @@ export default function CardModal({
                   cardId={cardId}
                   boardId={boardId}
                   isEditor={!!pCanManageSubtasks}
-                  onRefresh={loadCard}
+                  onUpdate={(subtasks) => setCard((prev) => prev ? { ...prev, subtasks } : prev)}
                 />
 
                 {/* Attachments */}
@@ -439,7 +459,7 @@ export default function CardModal({
                   cardId={cardId}
                   boardId={boardId}
                   isEditor={!!pCanUploadAttachment}
-                  onRefresh={loadCard}
+                  onUpdate={(attachments) => setCard((prev) => prev ? { ...prev, attachments } : prev)}
                 />
 
                 {/* Comments with @Mentions */}
@@ -449,7 +469,7 @@ export default function CardModal({
                   boardId={boardId}
                   isEditor={!!pCanComment}
                   allUsers={allUsers}
-                  onRefresh={loadCard}
+                  onUpdate={(comments) => setCard((prev) => prev ? { ...prev, comments } : prev)}
                 />
               </div>
 
@@ -815,7 +835,6 @@ export default function CardModal({
           onDone={() => {
             setCrossBoardAction(null);
             loadCard();
-            refreshBoard();
           }}
         />
       )}

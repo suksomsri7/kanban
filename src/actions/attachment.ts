@@ -22,7 +22,7 @@ export async function createAttachmentRecord(
   const { allowed, error: permErr } = await requireBoardPermission(boardId, user.id, user.role, "canUploadAttachment");
   if (!allowed) return { error: permErr || "Permission denied" };
 
-  await prisma.attachment.create({
+  const attachment = await prisma.attachment.create({
     data: {
       fileName,
       fileUrl,
@@ -31,12 +31,15 @@ export async function createAttachmentRecord(
       cardId,
       uploadedBy: user.id,
     },
+    include: {
+      uploader: { select: { id: true, displayName: true } },
+    },
   });
 
   await logActivity("ATTACHMENT_ADDED", boardId, user.id, { fileName }, cardId);
 
   revalidatePath(`/board/${boardId}`);
-  return { success: true };
+  return { success: true, attachment };
 }
 
 export async function deleteAttachment(attachmentId: string, boardId: string) {
