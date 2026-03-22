@@ -170,6 +170,9 @@ export async function updateCard(formData: FormData) {
 
   await logActivity("CARD_UPDATED", card.column.boardId, user.id, { ...data }, card.id);
 
+  // #region agent log
+  console.log('[DBG-3e7644] updateCard revalidatePath', {cardId:id, boardId:card.column.boardId, fields:Object.keys(data)});
+  // #endregion
   revalidatePath(`/board/${card.column.boardId}`);
   return { success: true };
 }
@@ -372,6 +375,9 @@ export async function addComment(cardId: string, content: string, boardId: strin
 
   await logActivity("COMMENT_ADDED", boardId, user.id, { preview: content.trim().slice(0, 80) }, cardId);
 
+  // #region agent log
+  console.log('[DBG-3e7644] addComment revalidate+pusher', {cardId, boardId});
+  // #endregion
   revalidatePath(`/board/${boardId}`);
   triggerBoardEvent(boardId, "comment-added", { cardId });
   return { success: true };

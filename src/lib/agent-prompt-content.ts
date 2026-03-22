@@ -92,6 +92,8 @@ curl -X POST {BASE_URL}/cards \\
 **เพิ่ม Comment:**
 - POST {BASE_URL}/cards/{cardId}/comments
   Body: {"content":"..."}
+  (ระบบจะแสดงชื่อ API Key เป็นผู้เขียน comment อัตโนมัติ พร้อม Bot icon + badge "Agent")
+  (แนบไฟล์ใน content: รูป \`![ชื่อ](url)\`, วิดีโอ \`[video:ชื่อ](url)\`, ไฟล์อื่น \`[file:ชื่อ](url)\`)
 
 **อ่าน Prompt ที่ตั้งไว้:**
 - GET {BASE_URL}/prompt

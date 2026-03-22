@@ -88,6 +88,13 @@ Response format: {"success": true, "data": {...}} หรือ {"success": false
 | ดู comments | GET | /cards/{cardId}/comments | - |
 | เพิ่ม comment | POST | /cards/{cardId}/comments | `{"content":"..."}` |
 
+> **Agent Attribution:** comment ที่ Agent สร้างจะแสดงชื่อ API Key เป็นผู้เขียน พร้อม Bot icon + badge "Agent" (ไม่ใช้ชื่อ board owner)
+
+> **แนบไฟล์ใน comment:** ใส่ Markdown ใน content:
+> - รูปภาพ: `![ชื่อ](url)`
+> - วิดีโอ: `[video:ชื่อ](url)`
+> - ไฟล์อื่น: `[file:ชื่อ](url)`
+
 ### Prompt & Status
 
 | งาน | Method | Path | Body ตัวอย่าง |
@@ -148,7 +155,7 @@ API Key: agk_ABCDabcd1234567890...
 
 - **API นี้แยกจาก API หลัก** (`/api/v1/cards` etc.) — ใช้ API Key ที่สร้างจาก Stage Settings
 - **สร้าง API Key ได้หลายตัว** — แต่ละตัวมีชื่อ, สิทธิ์, วันหมดอายุแยกกัน
-- **ชื่อ Key** จะแสดงใน comment ที่ Agent สร้าง เช่น `[Agent: n8n-workflow]`
+- **ชื่อ Key แสดงเป็นผู้เขียน** — comment ที่ Agent สร้างจะแสดงชื่อ key เป็น author พร้อม Bot icon + badge "Agent"
 - **Scoped per-board** — Agent จัดการได้เฉพาะ Card ใน Board เดียวกัน
 - **ย้าย Card** ได้เฉพาะภายใน Board เดียวกัน (ข้าม Board ใช้ Refer)
 - **Automation Status** ต้องเป็น **Run** ถึงจะเรียก API ได้ (ถ้า Pause จะตอบ 403)

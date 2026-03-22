@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useTransition } from "react";
-import { MessageSquare, Trash2, Send, Paperclip, X, Loader2, FileText, Film, Image as ImageIcon, Download } from "lucide-react";
+import { MessageSquare, Trash2, Send, Paperclip, X, Loader2, FileText, Film, Image as ImageIcon, Download, Bot } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import { addComment, deleteComment } from "@/actions/card";
 import { format } from "date-fns";
@@ -425,36 +425,55 @@ export default function CardComments({
       )}
 
       <div className="space-y-3">
-        {comments.map((comment) => (
-          <div key={comment.id} className="flex gap-2.5 group">
-            <Avatar
-              name={comment.author.displayName}
-              src={comment.author.avatar}
-              size="sm"
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-900">
-                  {comment.author.displayName}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {format(new Date(comment.createdAt), "MMM d, HH:mm")}
-                </span>
-                {isEditor && (
-                  <button
-                    onClick={() => handleDelete(comment.id)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all ml-auto"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                )}
-              </div>
-              <div className="text-sm text-gray-600 mt-0.5 whitespace-pre-wrap">
-                {renderContent(comment.content)}
+        {comments.map((comment) => {
+          const agentMatch = comment.content.match(/^\*\*\[Agent:\s*(.+?)\]\*\*\n?/);
+          const agentName = agentMatch ? agentMatch[1] : null;
+          const displayContent = agentMatch ? comment.content.slice(agentMatch[0].length) : comment.content;
+
+          return (
+            <div key={comment.id} className="flex gap-2.5 group">
+              {agentName ? (
+                <div className="w-7 h-7 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
+                  <Bot size={14} className="text-teal-600" />
+                </div>
+              ) : (
+                <Avatar
+                  name={comment.author.displayName}
+                  src={comment.author.avatar}
+                  size="sm"
+                />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  {agentName ? (
+                    <span className="inline-flex items-center gap-1 text-sm font-medium text-teal-700">
+                      {agentName}
+                      <span className="text-[9px] px-1.5 py-0.5 bg-teal-100 text-teal-600 rounded-full font-medium">Agent</span>
+                    </span>
+                  ) : (
+                    <span className="text-sm font-medium text-gray-900">
+                      {comment.author.displayName}
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400">
+                    {format(new Date(comment.createdAt), "MMM d, HH:mm")}
+                  </span>
+                  {isEditor && (
+                    <button
+                      onClick={() => handleDelete(comment.id)}
+                      className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all ml-auto"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="text-sm text-gray-600 mt-0.5 whitespace-pre-wrap">
+                  {renderContent(displayContent)}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

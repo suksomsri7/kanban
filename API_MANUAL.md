@@ -153,6 +153,12 @@ POST   /api/v1/cards/{cardId}/comments    → comments:create
 
 **POST Body:** `{ "content": "..." }`
 
+> **File Attachments ใน Comment:**
+> ใส่ Markdown syntax ใน content เพื่อแนบไฟล์:
+> - รูปภาพ: `![ชื่อ](url)` → แสดงเป็นภาพ inline
+> - วิดีโอ: `[video:ชื่อ](url)` → แสดงเป็น video player
+> - ไฟล์อื่น: `[file:ชื่อ](url)` → แสดงเป็นลิงก์ download
+
 ---
 
 ### Subtasks
@@ -315,7 +321,34 @@ GET    /cards/{cardId}/comments           → ไม่ต้องมี
 POST   /cards/{cardId}/comments           → canComment
 ```
 
-Body: `{ "content": "..." }`
+**POST Body:** `{ "content": "..." }`
+
+> **Agent Comment Attribution:** เมื่อ Agent API สร้าง comment ระบบจะเติม prefix `**[Agent: keyName]**` ลงใน content อัตโนมัติ
+> UI จะแสดงชื่อ Agent key เป็นชื่อผู้เขียน พร้อม badge "Agent" แทนชื่อ user ของ board
+
+> **File Attachments ใน Comment:**
+> สามารถแนบ Markdown ของไฟล์ใน content ได้:
+> - รูปภาพ: `![ชื่อ](url)`
+> - วิดีโอ: `[video:ชื่อ](url)`
+> - ไฟล์อื่นๆ: `[file:ชื่อ](url)`
+>
+> UI จะ render เป็นภาพ/วิดีโอ/ลิงก์ download อัตโนมัติ
+
+---
+
+### File Upload
+
+```
+POST   /api/upload                        → (ต้อง login — ไม่รองรับ Agent API key)
+```
+
+**Content-Type:** `multipart/form-data`
+**Body:** `file` (File), `cardId` (string)
+
+- ไฟล์เก็บบน local: `uploads/cards/{cardId}/{timestamp}_{filename}`
+- ไม่จำกัดขนาดไฟล์
+- เมื่อลบ card ไฟล์ที่แนบจะถูกลบอัตโนมัติ
+- Response: `{ "success": true, "fileName": "...", "fileUrl": "...", "fileSize": 1234, "mimeType": "image/png" }`
 
 ---
 
@@ -486,12 +519,18 @@ API Key: agk_ABCDabcd1234567890...
 ### Agent API
 - **แยกจาก Main API** — ใช้ API Key ที่สร้างจาก Stage Settings
 - **สร้าง Key ได้หลายตัว** — แต่ละตัวมีชื่อ, สิทธิ์, วันหมดอายุแยกกัน
-- **ชื่อ Key** แสดงใน comment ที่ Agent สร้าง เช่น `[Agent: n8n-workflow]`
+- **ชื่อ Key แสดงเป็นผู้เขียน** — comment ที่ Agent สร้างจะแสดงชื่อ key เป็น author พร้อม Bot icon + badge "Agent" (ไม่แสดงชื่อ board owner)
 - **Scoped per-board** — Agent จัดการ Card ใน Board เดียวกันเท่านั้น
 - **ย้าย Card** ได้เฉพาะภายใน Board เดียวกัน (ข้าม Board ใช้ Refer)
 - **Automation Status** ต้องเป็น **Run** ถึงจะเรียก API ได้ (Pause = 403)
 - **Key ถูก hash** — raw key แสดงแค่ตอนสร้างครั้งเดียว
 - **Enable/Disable** — ปิดใช้งาน key ชั่วคราวได้โดยไม่ต้องลบ
+
+### File Storage
+- ไฟล์เก็บบน **local storage**: `uploads/cards/{cardId}/{timestamp}_{filename}`
+- **ไม่จำกัดขนาดไฟล์**
+- ไฟล์ที่แนบจะ **ถูกลบอัตโนมัติ** เมื่อลบ card หรือลบ brand
+- Comment รองรับ **ไฟล์แนบ** (รูป, วิดีโอ, เอกสาร) ผ่าน Markdown syntax ใน content
 
 ---
 
@@ -507,4 +546,4 @@ API Key: agk_ABCDabcd1234567890...
 | **จัดการ Board** | ได้ | ไม่ได้ |
 | **Duplicate / Refer** | ไม่มี | มี |
 | **Multi-key** | ต่อ user | ต่อ column |
-| **ชื่อ Key ใน Comment** | ไม่มี | มี `[Agent: name]` |
+| **ชื่อ Key ใน Comment** | ไม่มี | มี — แสดงเป็น author + badge "Agent" |

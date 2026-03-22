@@ -123,6 +123,13 @@ Response format:
 |--------|------|------------|------|
 | POST | `/cards/{cardId}/comments` | canComment | `{"content":"..."}` |
 
+> **Agent Attribution:** ระบบจะแสดงชื่อ API Key เป็นผู้เขียน comment อัตโนมัติ (Bot icon + badge "Agent") ไม่ต้องระบุชื่อเอง
+
+> **แนบไฟล์ใน comment:** ใส่ Markdown syntax ใน content:
+> - รูปภาพ: `![ชื่อ](url)` → แสดงเป็นภาพ inline
+> - วิดีโอ: `[video:ชื่อ](url)` → แสดงเป็น video player
+> - ไฟล์อื่น: `[file:ชื่อ](url)` → แสดงเป็นลิงก์ download
+
 ### Automation Status
 
 | Method | Path | Body |
@@ -287,6 +294,8 @@ curl -X POST \
 Board → Column → Card
 Card: id, title, description, priority (LOW/MEDIUM/HIGH/URGENT), dueDate, labels[], assignees[], subtasks[], comments[]
 Subtask: id, title, isCompleted, order
-Comment: id, content, author, createdAt
+Comment: id, content, author, createdAt (Agent comments แสดงชื่อ key เป็น author + badge "Agent")
 Label: id, name, color
 ```
+
+> ไฟล์ที่แนบเก็บบน local storage — ลบอัตโนมัติเมื่อลบ card
