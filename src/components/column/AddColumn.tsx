@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Plus, X } from "lucide-react";
 import { generateKeyBetween } from "fractional-indexing";
 import { createColumn } from "@/actions/column";
@@ -13,6 +13,7 @@ interface AddColumnProps {
 
 export default function AddColumn({ boardId, lastOrder }: AddColumnProps) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ export default function AddColumn({ boardId, lastOrder }: AddColumnProps) {
     setTitle("");
     setAdding(false);
     setLoading(false);
-    router.refresh();
+    startTransition(() => router.refresh());
   }
 
   if (!adding) {

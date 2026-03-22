@@ -172,6 +172,10 @@ export default function CardModal({
     setLoading(false);
   }
 
+  function refreshBoard() {
+    startTransition(() => router.refresh());
+  }
+
   async function handleSave() {
     const formData = new FormData();
     formData.set("id", cardId);
@@ -180,7 +184,7 @@ export default function CardModal({
     formData.set("priority", priority);
     formData.set("dueDate", dueDate || "");
     await updateCard(formData);
-    router.refresh();
+    refreshBoard();
   }
 
   async function handleFieldSave(field: string, value: string) {
@@ -188,14 +192,13 @@ export default function CardModal({
     formData.set("id", cardId);
     formData.set(field, value);
     await updateCard(formData);
-    router.refresh();
   }
 
   async function handleDelete() {
     if (!confirm("Delete this card permanently?")) return;
     await deleteCard(cardId);
     onClose();
-    router.refresh();
+    refreshBoard();
   }
 
   async function handleStageChange(targetColumnId: string) {
@@ -204,7 +207,7 @@ export default function CardModal({
       const order = generateKeyBetween(null, null) + Date.now().toString(36);
       await moveCard(cardId, targetColumnId, order, boardId);
       await loadCard();
-      router.refresh();
+      refreshBoard();
     });
   }
 
@@ -254,7 +257,7 @@ export default function CardModal({
         await loadCard();
       }
       setLabelMode("list");
-      router.refresh();
+      refreshBoard();
     });
   }
 
@@ -264,7 +267,7 @@ export default function CardModal({
       await deleteLabel(labelId, boardId);
       setBoardLabels((prev) => prev.filter((l) => l.id !== labelId));
       await loadCard();
-      router.refresh();
+      refreshBoard();
     });
   }
 
@@ -278,7 +281,6 @@ export default function CardModal({
       : [...lockedFields, field];
     setLockedFields(next);
     await updateCardLockedFields(cardId, next, boardId);
-    router.refresh();
   }
 
   const assigneeIds = new Set(card?.assignees.map((a) => a.user.id) || []);
@@ -801,7 +803,7 @@ export default function CardModal({
           onDone={() => {
             setCrossBoardAction(null);
             loadCard();
-            router.refresh();
+            refreshBoard();
           }}
         />
       )}

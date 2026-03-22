@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -30,7 +30,7 @@ interface ColumnProps {
   onCardClick?: (cardId: string) => void;
 }
 
-export default function Column({ column, boardId, labels, isEditor, canCreateCard = true, canMoveCard = true, canEditColumn = true, canDeleteColumn = true, restricted = false, onCardClick }: ColumnProps) {
+export default memo(function Column({ column, boardId, labels, isEditor, canCreateCard = true, canMoveCard = true, canEditColumn = true, canDeleteColumn = true, restricted = false, onCardClick }: ColumnProps) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(column.title);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -203,4 +203,4 @@ export default function Column({ column, boardId, labels, isEditor, canCreateCar
       )}
     </div>
   );
-}
+});

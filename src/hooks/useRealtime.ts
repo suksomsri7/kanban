@@ -1,15 +1,26 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef, useTransition } from "react";
 import { getPusherClient } from "@/lib/pusher-client";
 import { useRouter } from "next/navigation";
 
 export function useBoardRealtime(boardId: string) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(() => {
-    router.refresh();
-  }, [router]);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      startTransition(() => router.refresh());
+    }, 300);
+  }, [router, startTransition]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const pusher = getPusherClient();

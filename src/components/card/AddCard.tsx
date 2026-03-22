@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Plus, X } from "lucide-react";
 import { generateKeyBetween } from "fractional-indexing";
 import { createCard } from "@/actions/card";
@@ -13,6 +13,7 @@ interface AddCardProps {
 
 export default function AddCard({ columnId, lastOrder }: AddCardProps) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,7 +32,7 @@ export default function AddCard({ columnId, lastOrder }: AddCardProps) {
     await createCard(formData);
     setTitle("");
     setLoading(false);
-    router.refresh();
+    startTransition(() => router.refresh());
   }
 
   if (!adding) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { MessageSquare, Paperclip, CheckSquare, Calendar, AlertTriangle, Lock, Link2 } from "lucide-react";
@@ -32,7 +33,7 @@ const priorityColors: Record<string, string> = {
   LOW: "border-l-gray-300",
 };
 
-export default function CardThumb({ card, onCardClick, isDragOverlay, canDrag = true, restricted = false }: CardThumbProps) {
+export default memo(function CardThumb({ card, onCardClick, isDragOverlay, canDrag = true, restricted = false }: CardThumbProps) {
   const {
     attributes,
     listeners,
@@ -163,4 +164,4 @@ export default function CardThumb({ card, onCardClick, isDragOverlay, canDrag = 
       </div>
     </div>
   );
-}
+});
