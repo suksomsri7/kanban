@@ -450,7 +450,7 @@ export default function CardModal({
                   cardId={cardId}
                   boardId={boardId}
                   isEditor={!!pCanManageSubtasks}
-                  onUpdate={(subtasks) => setCard((prev) => prev ? { ...prev, subtasks } : prev)}
+                  onUpdate={(subtasks) => setCard((prev) => prev ? { ...prev, subtasks } as typeof prev : prev)}
                 />
 
                 {/* Attachments */}
@@ -459,7 +459,7 @@ export default function CardModal({
                   cardId={cardId}
                   boardId={boardId}
                   isEditor={!!pCanUploadAttachment}
-                  onUpdate={(attachments) => setCard((prev) => prev ? { ...prev, attachments } : prev)}
+                  onUpdate={(attachments) => setCard((prev) => prev ? { ...prev, attachments } as typeof prev : prev)}
                 />
 
                 {/* Comments with @Mentions */}
@@ -469,7 +469,7 @@ export default function CardModal({
                   boardId={boardId}
                   isEditor={!!pCanComment}
                   allUsers={allUsers}
-                  onUpdate={(comments) => setCard((prev) => prev ? { ...prev, comments } : prev)}
+                  onUpdate={(comments) => setCard((prev) => prev ? { ...prev, comments } as typeof prev : prev)}
                 />
               </div>
 

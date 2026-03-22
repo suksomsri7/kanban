@@ -9,6 +9,7 @@ interface Subtask {
   title: string;
   isCompleted: boolean;
   order: string;
+  cardId: string;
 }
 
 interface CardSubtasksProps {
