@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback, useTransition } from "react";
-import { MessageSquare, Trash2, Send } from "lucide-react";
+import { useState, useRef, useTransition } from "react";
+import { MessageSquare, Trash2, Send, ImagePlus, X, Loader2 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import { addComment, deleteComment } from "@/actions/card";
 import { format } from "date-fns";
@@ -29,6 +29,14 @@ interface CardCommentsProps {
   onRefresh: () => void;
 }
 
+interface PendingImage {
+  file: File;
+  preview: string;
+}
+
+const IMAGE_URL_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g;
+const BARE_IMAGE_URL_REGEX = /(https?:\/\/\S+\.(?:png|jpe?g|gif|webp))(?:\s|$)/gi;
+
 export default function CardComments({
   comments,
   cardId,
@@ -42,7 +50,10 @@ export default function CardComments({
   const [mentionSearch, setMentionSearch] = useState("");
   const [cursorPos, setCursorPos] = useState(0);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const filteredUsers = allUsers.filter(
     (u) =>
@@ -80,13 +91,71 @@ export default function CardComments({
     textRef.current?.focus();
   }
 
-  async function handleSubmit() {
-    if (!text.trim()) return;
-    startTransition(async () => {
-      await addComment(cardId, text, boardId);
-      setText("");
-      onRefresh();
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newImages: PendingImage[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith("image/")) continue;
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`${file.name} exceeds 10MB limit`);
+        continue;
+      }
+      newImages.push({ file, preview: URL.createObjectURL(file) });
+    }
+    setPendingImages((prev) => [...prev, ...newImages]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removePendingImage(index: number) {
+    setPendingImages((prev) => {
+      URL.revokeObjectURL(prev[index].preview);
+      return prev.filter((_, i) => i !== index);
     });
+  }
+
+  async function uploadImages(): Promise<string[]> {
+    const urls: string[] = [];
+    for (const img of pendingImages) {
+      const formData = new FormData();
+      formData.set("file", img.file);
+      formData.set("cardId", cardId);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.fileUrl) urls.push(data.fileUrl);
+    }
+    return urls;
+  }
+
+  async function handleSubmit() {
+    if (!text.trim() && pendingImages.length === 0) return;
+    setUploading(true);
+
+    try {
+      let finalContent = text;
+
+      if (pendingImages.length > 0) {
+        const urls = await uploadImages();
+        const imageMarkdown = urls.map((url) => `![image](${url})`).join("\n");
+        finalContent = finalContent.trim()
+          ? `${finalContent.trim()}\n${imageMarkdown}`
+          : imageMarkdown;
+      }
+
+      if (!finalContent.trim()) return;
+
+      startTransition(async () => {
+        await addComment(cardId, finalContent, boardId);
+        setText("");
+        pendingImages.forEach((img) => URL.revokeObjectURL(img.preview));
+        setPendingImages([]);
+        onRefresh();
+      });
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleDelete(commentId: string) {
@@ -98,21 +167,54 @@ export default function CardComments({
 
   function renderContent(content: string) {
     const normalized = content.replace(/\\n/g, "\n");
-    const parts = normalized.split(/(@\w+)/g);
+
+    const segments: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let key = 0;
+
+    const mdRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = mdRegex.exec(normalized)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push(...renderTextSegment(normalized.substring(lastIndex, match.index), key));
+        key += 100;
+      }
+      const url = match[2];
+      segments.push(
+        <a key={`img-${key++}`} href={url} target="_blank" rel="noopener noreferrer" className="block my-1.5">
+          <img
+            src={url}
+            alt={match[1] || "image"}
+            className="max-w-full max-h-60 rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+            loading="lazy"
+          />
+        </a>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < normalized.length) {
+      segments.push(...renderTextSegment(normalized.substring(lastIndex), key));
+    }
+
+    return segments;
+  }
+
+  function renderTextSegment(text: string, startKey: number): React.ReactNode[] {
+    const parts = text.split(/(@\w+)/g);
     return parts.map((part, i) => {
       if (part.startsWith("@")) {
-        const username = part.slice(1);
-        const user = allUsers.find((u) => u.username === username);
         return (
           <span
-            key={i}
+            key={`m-${startKey}-${i}`}
             className="text-blue-600 font-medium bg-blue-50 rounded px-0.5"
           >
             {part}
           </span>
         );
       }
-      return part;
+      return <span key={`t-${startKey}-${i}`}>{part}</span>;
     });
   }
 
@@ -130,19 +232,75 @@ export default function CardComments({
             value={text}
             onChange={handleTextChange}
             rows={2}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none pr-10"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none pr-20"
             placeholder="Write a comment... Use @ to mention"
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleSubmit();
             }}
+            onPaste={(e) => {
+              const items = e.clipboardData?.items;
+              if (!items) return;
+              for (let i = 0; i < items.length; i++) {
+                if (items[i].type.startsWith("image/")) {
+                  e.preventDefault();
+                  const file = items[i].getAsFile();
+                  if (file) {
+                    setPendingImages((prev) => [
+                      ...prev,
+                      { file, preview: URL.createObjectURL(file) },
+                    ]);
+                  }
+                  break;
+                }
+              }
+            }}
           />
-          <button
-            onClick={handleSubmit}
-            disabled={!text.trim() || isPending}
-            className="absolute right-2 bottom-2 p-1.5 rounded-lg text-gray-400 hover:text-black disabled:opacity-30 transition-colors"
-          >
-            <Send size={16} />
-          </button>
+
+          <div className="absolute right-2 bottom-2 flex items-center gap-0.5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              title="Attach image"
+              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 transition-colors"
+            >
+              <ImagePlus size={16} />
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={(!text.trim() && pendingImages.length === 0) || isPending || uploading}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-black disabled:opacity-30 transition-colors"
+            >
+              {uploading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            </button>
+          </div>
+
+          {pendingImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {pendingImages.map((img, idx) => (
+                <div key={idx} className="relative group">
+                  <img
+                    src={img.preview}
+                    alt="preview"
+                    className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                  />
+                  <button
+                    onClick={() => removePendingImage(idx)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {showMentions && filteredUsers.length > 0 && (
             <div className="absolute left-0 bottom-full mb-1 bg-white border border-gray-200 rounded-lg shadow-lg w-56 max-h-40 overflow-y-auto z-10">
@@ -189,9 +347,9 @@ export default function CardComments({
                   </button>
                 )}
               </div>
-              <p className="text-sm text-gray-600 mt-0.5 whitespace-pre-wrap">
+              <div className="text-sm text-gray-600 mt-0.5 whitespace-pre-wrap">
                 {renderContent(comment.content)}
-              </p>
+              </div>
             </div>
           </div>
         ))}
