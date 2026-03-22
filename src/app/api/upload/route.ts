@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { uploadFile } from "@/lib/storage";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -17,10 +18,6 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

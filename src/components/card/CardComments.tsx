@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useTransition } from "react";
-import { MessageSquare, Trash2, Send, ImagePlus, X, Loader2 } from "lucide-react";
+import { MessageSquare, Trash2, Send, Paperclip, X, Loader2, FileText, Film, Image as ImageIcon, Download } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import { addComment, deleteComment } from "@/actions/card";
 import { format } from "date-fns";
@@ -29,13 +29,46 @@ interface CardCommentsProps {
   onRefresh: () => void;
 }
 
-interface PendingImage {
+interface PendingFile {
   file: File;
-  preview: string;
+  preview: string | null;
 }
 
-const IMAGE_URL_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g;
-const BARE_IMAGE_URL_REGEX = /(https?:\/\/\S+\.(?:png|jpe?g|gif|webp))(?:\s|$)/gi;
+const IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
+const VIDEO_EXTS = [".mp4", ".webm", ".mov", ".avi"];
+
+function getFileExt(url: string): string {
+  const name = url.split("/").pop() || "";
+  const dot = name.lastIndexOf(".");
+  return dot >= 0 ? name.substring(dot).toLowerCase() : "";
+}
+
+function getFileName(url: string): string {
+  const name = url.split("/").pop() || "file";
+  const underscoreIdx = name.indexOf("_");
+  return underscoreIdx > 0 ? name.substring(underscoreIdx + 1) : name;
+}
+
+function isImageUrl(url: string): boolean {
+  return IMAGE_EXTS.some((ext) => getFileExt(url) === ext);
+}
+
+function isVideoUrl(url: string): boolean {
+  return VIDEO_EXTS.some((ext) => getFileExt(url) === ext);
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function getFileTypeInfo(file: File): { icon: "image" | "video" | "doc"; label: string } {
+  if (file.type.startsWith("image/")) return { icon: "image", label: "Image" };
+  if (file.type.startsWith("video/")) return { icon: "video", label: "Video" };
+  return { icon: "doc", label: file.name.split(".").pop()?.toUpperCase() || "File" };
+}
 
 export default function CardComments({
   comments,
@@ -52,8 +85,9 @@ export default function CardComments({
   const textRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
-  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
 
   const filteredUsers = allUsers.filter(
     (u) =>
@@ -91,57 +125,63 @@ export default function CardComments({
     textRef.current?.focus();
   }
 
-  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files) return;
 
-    const newImages: PendingImage[] = [];
+    const newFiles: PendingFile[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (!file.type.startsWith("image/")) continue;
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`${file.name} exceeds 10MB limit`);
-        continue;
-      }
-      newImages.push({ file, preview: URL.createObjectURL(file) });
+      const preview = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+      newFiles.push({ file, preview });
     }
-    setPendingImages((prev) => [...prev, ...newImages]);
+    setPendingFiles((prev) => [...prev, ...newFiles]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function removePendingImage(index: number) {
-    setPendingImages((prev) => {
-      URL.revokeObjectURL(prev[index].preview);
+  function removePendingFile(index: number) {
+    setPendingFiles((prev) => {
+      if (prev[index].preview) URL.revokeObjectURL(prev[index].preview!);
       return prev.filter((_, i) => i !== index);
     });
   }
 
-  async function uploadImages(): Promise<string[]> {
-    const urls: string[] = [];
-    for (const img of pendingImages) {
+  async function uploadFiles(): Promise<{ url: string; name: string; mime: string }[]> {
+    const results: { url: string; name: string; mime: string }[] = [];
+    for (let i = 0; i < pendingFiles.length; i++) {
+      const pf = pendingFiles[i];
+      setUploadProgress(`Uploading ${i + 1}/${pendingFiles.length}: ${pf.file.name}`);
       const formData = new FormData();
-      formData.set("file", img.file);
+      formData.set("file", pf.file);
       formData.set("cardId", cardId);
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
-      if (data.fileUrl) urls.push(data.fileUrl);
+      if (data.fileUrl) {
+        results.push({ url: data.fileUrl, name: data.fileName, mime: data.mimeType || "" });
+      }
     }
-    return urls;
+    setUploadProgress("");
+    return results;
   }
 
   async function handleSubmit() {
-    if (!text.trim() && pendingImages.length === 0) return;
+    if (!text.trim() && pendingFiles.length === 0) return;
     setUploading(true);
 
     try {
       let finalContent = text;
 
-      if (pendingImages.length > 0) {
-        const urls = await uploadImages();
-        const imageMarkdown = urls.map((url) => `![image](${url})`).join("\n");
+      if (pendingFiles.length > 0) {
+        const uploaded = await uploadFiles();
+        const attachLines = uploaded.map((f) => {
+          if (f.mime.startsWith("image/")) return `![${f.name}](${f.url})`;
+          if (f.mime.startsWith("video/")) return `[video:${f.name}](${f.url})`;
+          return `[file:${f.name}](${f.url})`;
+        });
+        const attachMarkdown = attachLines.join("\n");
         finalContent = finalContent.trim()
-          ? `${finalContent.trim()}\n${imageMarkdown}`
-          : imageMarkdown;
+          ? `${finalContent.trim()}\n${attachMarkdown}`
+          : attachMarkdown;
       }
 
       if (!finalContent.trim()) return;
@@ -149,8 +189,8 @@ export default function CardComments({
       startTransition(async () => {
         await addComment(cardId, finalContent, boardId);
         setText("");
-        pendingImages.forEach((img) => URL.revokeObjectURL(img.preview));
-        setPendingImages([]);
+        pendingFiles.forEach((pf) => { if (pf.preview) URL.revokeObjectURL(pf.preview); });
+        setPendingFiles([]);
         onRefresh();
       });
     } finally {
@@ -167,30 +207,68 @@ export default function CardComments({
 
   function renderContent(content: string) {
     const normalized = content.replace(/\\n/g, "\n");
-
     const segments: React.ReactNode[] = [];
     let lastIndex = 0;
     let key = 0;
 
-    const mdRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    const attachRegex = /!\[([^\]]*)\]\(([^)]+)\)|\[(?:video|file):([^\]]*)\]\(([^)]+)\)/g;
     let match: RegExpExecArray | null;
 
-    while ((match = mdRegex.exec(normalized)) !== null) {
+    while ((match = attachRegex.exec(normalized)) !== null) {
       if (match.index > lastIndex) {
         segments.push(...renderTextSegment(normalized.substring(lastIndex, match.index), key));
         key += 100;
       }
-      const url = match[2];
-      segments.push(
-        <a key={`img-${key++}`} href={url} target="_blank" rel="noopener noreferrer" className="block my-1.5">
-          <img
-            src={url}
-            alt={match[1] || "image"}
-            className="max-w-full max-h-60 rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-            loading="lazy"
-          />
-        </a>
-      );
+
+      if (match[0].startsWith("![")) {
+        const url = match[2];
+        segments.push(
+          <a key={`img-${key++}`} href={url} target="_blank" rel="noopener noreferrer" className="block my-1.5">
+            <img
+              src={url}
+              alt={match[1] || "image"}
+              className="max-w-full max-h-60 rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+              loading="lazy"
+            />
+          </a>
+        );
+      } else if (match[0].startsWith("[video:")) {
+        const url = match[4];
+        const name = match[3] || getFileName(url);
+        segments.push(
+          <div key={`vid-${key++}`} className="my-1.5">
+            <video
+              src={url}
+              controls
+              preload="metadata"
+              className="max-w-full max-h-60 rounded-lg border border-gray-200"
+            />
+            <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
+              <Film size={10} /> {name}
+            </p>
+          </div>
+        );
+      } else if (match[0].startsWith("[file:")) {
+        const url = match[4];
+        const name = match[3] || getFileName(url);
+        const ext = getFileExt(url);
+        segments.push(
+          <a
+            key={`file-${key++}`}
+            href={url}
+            download={name}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 my-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <FileText size={16} className="text-gray-500 shrink-0" />
+            <span className="text-xs text-gray-700 font-medium truncate max-w-[200px]">{name}</span>
+            <span className="text-[10px] text-gray-400 uppercase shrink-0">{ext.replace(".", "")}</span>
+            <Download size={12} className="text-gray-400 shrink-0" />
+          </a>
+        );
+      }
+
       lastIndex = match.index + match[0].length;
     }
 
@@ -217,6 +295,12 @@ export default function CardComments({
       return <span key={`t-${startKey}-${i}`}>{part}</span>;
     });
   }
+
+  const FileIcon = ({ type }: { type: "image" | "video" | "doc" }) => {
+    if (type === "image") return <ImageIcon size={14} className="text-blue-500" />;
+    if (type === "video") return <Film size={14} className="text-purple-500" />;
+    return <FileText size={14} className="text-gray-500" />;
+  };
 
   return (
     <div>
@@ -245,7 +329,7 @@ export default function CardComments({
                   e.preventDefault();
                   const file = items[i].getAsFile();
                   if (file) {
-                    setPendingImages((prev) => [
+                    setPendingFiles((prev) => [
                       ...prev,
                       { file, preview: URL.createObjectURL(file) },
                     ]);
@@ -260,46 +344,64 @@ export default function CardComments({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
               multiple
-              onChange={handleImageSelect}
+              onChange={handleFileSelect}
               className="hidden"
             />
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              title="Attach image"
+              title="Attach file"
               className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 transition-colors"
             >
-              <ImagePlus size={16} />
+              <Paperclip size={16} />
             </button>
             <button
               onClick={handleSubmit}
-              disabled={(!text.trim() && pendingImages.length === 0) || isPending || uploading}
+              disabled={(!text.trim() && pendingFiles.length === 0) || isPending || uploading}
               className="p-1.5 rounded-lg text-gray-400 hover:text-black disabled:opacity-30 transition-colors"
             >
               {uploading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
             </button>
           </div>
 
-          {pendingImages.length > 0 && (
+          {pendingFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
-              {pendingImages.map((img, idx) => (
-                <div key={idx} className="relative group">
-                  <img
-                    src={img.preview}
-                    alt="preview"
-                    className="w-16 h-16 object-cover rounded-lg border border-gray-200"
-                  />
-                  <button
-                    onClick={() => removePendingImage(idx)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X size={10} />
-                  </button>
-                </div>
-              ))}
+              {pendingFiles.map((pf, idx) => {
+                const info = getFileTypeInfo(pf.file);
+                return (
+                  <div key={idx} className="relative group">
+                    {pf.preview ? (
+                      <img
+                        src={pf.preview}
+                        alt="preview"
+                        className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg border border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-0.5">
+                        <FileIcon type={info.icon} />
+                        <span className="text-[8px] text-gray-400 font-medium uppercase">{info.label}</span>
+                      </div>
+                    )}
+                    <span className="absolute bottom-0 inset-x-0 text-[7px] text-center text-gray-500 bg-white/80 rounded-b-lg px-0.5 truncate">
+                      {formatSize(pf.file.size)}
+                    </span>
+                    <button
+                      onClick={() => removePendingFile(idx)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
+          )}
+
+          {uploadProgress && (
+            <p className="text-[10px] text-blue-600 mt-1 flex items-center gap-1">
+              <Loader2 size={10} className="animate-spin" /> {uploadProgress}
+            </p>
           )}
 
           {showMentions && filteredUsers.length > 0 && (
