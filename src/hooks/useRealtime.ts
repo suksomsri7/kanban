@@ -12,12 +12,9 @@ export function useBoardRealtime(boardId: string) {
   const refresh = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      // #region agent log
-      console.log('[DBG-3e7644] Pusher refresh triggered', {boardId, ts: Date.now()});
-      // #endregion
       startTransition(() => router.refresh());
     }, 300);
-  }, [router, startTransition, boardId]);
+  }, [router, startTransition]);
 
   useEffect(() => {
     return () => {

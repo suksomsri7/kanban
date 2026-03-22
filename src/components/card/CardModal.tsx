@@ -157,9 +157,6 @@ export default function CardModal({
   }, [cardId]);
 
   async function loadCard() {
-    // #region agent log
-    const _lcStart = Date.now(); console.log('[DBG-3e7644] loadCard START', {cardId, ts: _lcStart});
-    // #endregion
     setLoading(true);
     const data = await getCardById(cardId);
     if (data) {
@@ -173,22 +170,13 @@ export default function CardModal({
       setLockedFields(Array.isArray(parsed) ? parsed : []);
     }
     setLoading(false);
-    // #region agent log
-    console.log('[DBG-3e7644] loadCard END', {cardId, elapsed: Date.now()-_lcStart});
-    // #endregion
   }
 
   function refreshBoard() {
-    // #region agent log
-    console.log('[DBG-3e7644] refreshBoard called', {cardId, ts: Date.now()});
-    // #endregion
     startTransition(() => router.refresh());
   }
 
   async function handleSave() {
-    // #region agent log
-    console.log('[DBG-3e7644] handleSave called', {cardId, ts: Date.now()});
-    // #endregion
     const formData = new FormData();
     formData.set("id", cardId);
     formData.set("title", title);
